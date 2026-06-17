@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/product_db
+    username: admin
+    password: admin123
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  elasticsearch:
+    uris: http://localhost:9200
+  kafka:
+    bootstrap-servers: localhost:9092

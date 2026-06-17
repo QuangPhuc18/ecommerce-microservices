@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: admin
+    password: admin123
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  kafka:
+    bootstrap-servers: localhost:9092
+
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyForDevEnvironmentChangeInProduction}
+  expiration: 86400000
