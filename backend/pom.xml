@@ -16,6 +16,10 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
+    <modules>
+        <module>shared-lib</module>
+    </modules>
+
     <name>E-Commerce Microservices</name>
     <description>Parent POM for C2C E-Commerce Platform</description>
 
