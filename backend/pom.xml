@@ -19,6 +19,7 @@
     <modules>
         <module>shared-lib</module>
         <module>config-server</module>
+        <module>auth-service</module>
         <module>discovery-service</module>
     </modules>
 
