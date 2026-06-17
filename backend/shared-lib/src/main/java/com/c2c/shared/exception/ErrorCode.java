@@ -12,6 +12,8 @@ public enum ErrorCode {
     USER_NOT_FOUND(4101, "User not found"),
     USER_ALREADY_EXISTS(4102, "User already exists"),
     EMAIL_ALREADY_EXISTS(4103, "Email already in use"),
+    PROFILE_NOT_FOUND(4104, "Profile not found"),
+    ADDRESS_NOT_FOUND(4105, "Address not found"),
 
     // Product errors
     PRODUCT_NOT_FOUND(4201, "Product not found"),
