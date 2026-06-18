@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+</head>
+<body>
+    <h2>Hello, <span th:text="${userName}">User</span>!</h2>
+    <p>Your order <strong th:text="${orderNumber}">#ORDER</strong> has been confirmed.</p>
+    <p>Total: <span th:text="${totalAmount}">0</span> <span th:text="${currency}">VND</span></p>
+    <p>Thank you for shopping with us!</p>
+</body>
+</html>

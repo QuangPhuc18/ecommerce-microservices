@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Received</title>
+</head>
+<body>
+    <h2>Payment Received</h2>
+    <p>We have received your payment of <strong th:text="${amount}">0</strong> <span th:text="${currency}">VND</span>.</p>
+    <p>Transaction code: <span th:text="${transactionCode}">TXN</span></p>
+</body>
+</html>

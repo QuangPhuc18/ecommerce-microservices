@@ -28,6 +28,7 @@
         <module>payment-service</module>
         <module>saga-orchestrator</module>
         <module>chat-service</module>
+        <module>notification-service</module>
     </modules>
 
     <name>E-Commerce Microservices</name>
