@@ -1,0 +1,3 @@
+com\example\media_service\MediaServiceApplication.class
+com\example\media_service\controller\MediaController.class
+com\example\media_service\service\MediaService.class

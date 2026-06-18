@@ -1,0 +1,5 @@
+com\example\review_service\controller\ReviewController.class
+com\example\review_service\repository\ReviewRepository.class
+com\example\review_service\entity\Review.class
+com\example\review_service\ReviewServiceApplication.class
+com\example\review_service\entity\Review$ReviewBuilder.class
