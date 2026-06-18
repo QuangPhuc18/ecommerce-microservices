@@ -35,6 +35,14 @@ public enum ErrorCode {
     INVALID_INPUT(4502, "Invalid input data"),
     MISSING_REQUIRED_FIELD(4503, "Missing required field"),
 
+    // Wallet errors
+    WALLET_NOT_FOUND(4601, "Wallet not found"),
+    WALLET_ALREADY_EXISTS(4602, "Wallet already exists"),
+
+    // Transaction errors
+    TRANSACTION_NOT_FOUND(4701, "Transaction not found"),
+    TRANSACTION_FAILED(4702, "Transaction failed"),
+
     // System errors
     INTERNAL_ERROR(5001, "Internal server error"),
     SERVICE_UNAVAILABLE(5002, "Service unavailable"),
