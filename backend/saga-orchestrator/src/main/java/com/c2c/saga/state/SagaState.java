@@ -1,0 +1,14 @@
+package com.c2c.saga.state;
+
+public enum SagaState {
+    STARTED,
+    VALIDATING_PRODUCT,
+    RESERVING_INVENTORY,
+    PROCESSING_PAYMENT,
+    CREATING_ORDER,
+    SENDING_NOTIFICATION,
+    COMPLETED,
+    COMPENSATING,
+    COMPENSATED,
+    FAILED
+}

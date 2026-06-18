@@ -43,6 +43,12 @@ public enum ErrorCode {
     TRANSACTION_NOT_FOUND(4701, "Transaction not found"),
     TRANSACTION_FAILED(4702, "Transaction failed"),
 
+    // Saga errors
+    SAGA_NOT_FOUND(4801, "Saga instance not found"),
+    SAGA_INVALID_TRANSITION(4802, "Invalid saga state transition"),
+    SAGA_STEP_FAILED(4803, "Saga step execution failed"),
+    SAGA_COMPENSATION_FAILED(4804, "Saga compensation failed"),
+
     // System errors
     INTERNAL_ERROR(5001, "Internal server error"),
     SERVICE_UNAVAILABLE(5002, "Service unavailable"),
