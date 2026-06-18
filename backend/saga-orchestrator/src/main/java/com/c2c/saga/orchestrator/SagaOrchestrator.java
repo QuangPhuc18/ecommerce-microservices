@@ -1,5 +1,6 @@
 package com.c2c.saga.orchestrator;
 
+import com.c2c.saga.compensation.CompensationRegistry;
 import com.c2c.saga.exception.SagaException;
 import com.c2c.saga.model.SagaInstance;
 import com.c2c.saga.model.SagaOutbox;

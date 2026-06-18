@@ -38,3 +38,19 @@ jwt:
   secret: ${JWT_SECRET:defaultSecretKeyForDevEnvironmentChangeInProduction}
   access-token-expiration: 86400000
   refresh-token-expiration: 604800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  pattern:
+    level: "%5p [%X{traceId:-},%X{spanId:-}]"

@@ -1,0 +1,35 @@
+{
+  "title": "JVM & Business Metrics",
+  "uid": "jvm-business",
+  "panels": [
+    {
+      "title": "JVM Memory Usage",
+      "type": "graph",
+      "targets": [
+        {"expr": "sum(jvm_memory_used_bytes{area='heap'}) by (instance)", "legendFormat": "Heap - {{instance}}"},
+        {"expr": "sum(jvm_memory_used_bytes{area='nonheap'}) by (instance)", "legendFormat": "Non-Heap - {{instance}}"}
+      ]
+    },
+    {
+      "title": "HTTP Request Rate",
+      "type": "graph",
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count[1m])", "legendFormat": "{{instance}} - {{method}} {{uri}}"}
+      ]
+    },
+    {
+      "title": "P95 Response Latency",
+      "type": "graph",
+      "targets": [
+        {"expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m]))", "legendFormat": "{{instance}}"}
+      ]
+    },
+    {
+      "title": "Error Rate (5xx)",
+      "type": "graph",
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count{status=~'5..'}[5m])", "legendFormat": "{{instance}}"}
+      ]
+    }
+  ]
+}

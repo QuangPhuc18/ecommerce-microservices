@@ -12,7 +12,7 @@
     <artifactId>analytics-service</artifactId>
     <packaging>jar</packaging>
     <name>Analytics Service</name>
-    <description>Admin Dashboard, Reports & Analytics</description>
+    <description>Admin Dashboard, Reports &amp; Analytics</description>
 
     <dependencies>
         <dependency>

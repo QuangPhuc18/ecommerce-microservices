@@ -1,5 +1,7 @@
 package com.c2c.gateway.exception;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +15,8 @@ import java.util.Map;
 
 @Component
 public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Mono<Void> handle(org.springframework.web.server.ServerWebExchange exchange, Throwable ex) {
@@ -30,8 +34,12 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
         exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        var buffer = exchange.getResponse().bufferFactory()
-                .wrap(new com.fasterxml.jackson.databind.ObjectMapper().valueToBytes(body));
-        return exchange.getResponse().writeWith(Mono.just(buffer));
+        try {
+            var buffer = exchange.getResponse().bufferFactory()
+                    .wrap(objectMapper.writeValueAsBytes(body));
+            return exchange.getResponse().writeWith(Mono.just(buffer));
+        } catch (JsonProcessingException e) {
+            return Mono.error(e);
+        }
     }
 }
