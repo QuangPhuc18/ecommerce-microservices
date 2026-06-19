@@ -3,12 +3,12 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY shared-lib shared-lib/
-COPY saga-orchestrator saga-orchestrator/
+COPY auth-service auth-service/
 
-RUN mvn clean package -pl saga-orchestrator -am -DskipTests
+RUN mvn clean package -pl auth-service -am -DskipTests
 
 FROM openjdk:21-jdk-slim
 WORKDIR /app
-COPY --from=build /app/saga-orchestrator/target/*.jar app.jar
-EXPOSE 8010
+COPY --from=build /app/auth-service/target/*.jar app.jar
+EXPOSE 8001
 ENTRYPOINT ["java", "-jar", "app.jar"]

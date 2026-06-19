@@ -2,7 +2,28 @@ networks:
   ecommerce-network:
     driver: bridge
 
+volumes:
+  postgres_data:
+  redis_data:
+  zookeeper_data:
+  kafka_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+x-common-env: &common-env
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+x-db-env: &db-env
+  SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+
 services:
+  # ============================================================
+  # INFRASTRUCTURE
+  # ============================================================
   postgres_db:
     image: postgres:16-alpine
     container_name: ecommerce-postgres
@@ -13,12 +34,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
       POSTGRES_DB: ${POSTGRES_DB:-user_db}
-      POSTGRES_MULTIPLE_DBS: user_db,product_db,order_db,payment_db,chat_db
+      POSTGRES_MULTIPLE_DBS: user_db,product_db,order_db,payment_db,chat_db,notification_db,analytics_db,saga_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-user_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,7 +87,7 @@ services:
     environment:
       KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes:
@@ -79,7 +100,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 60s
     networks:
       - ecommerce-network
 
@@ -104,12 +125,310 @@ services:
     networks:
       - ecommerce-network
 
+  # ============================================================
+  # BACKEND SERVICES
+  # ============================================================
+  discovery-service:
+    build:
+      context: ../../backend
+      dockerfile: discovery-service/Dockerfile
+    container_name: ecommerce-discovery
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - ecommerce-network
+
+  config-server:
+    build:
+      context: ../../backend
+      dockerfile: config-server/Dockerfile
+    container_name: ecommerce-config
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      <<: *common-env
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  auth-service:
+    build:
+      context: ../../backend
+      dockerfile: auth-service/Dockerfile
+    container_name: ecommerce-auth
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/user_db
+      SPRING_DATA_REDIS_HOST: redis_cache
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  user-service:
+    build:
+      context: ../../backend
+      dockerfile: user-service/Dockerfile
+    container_name: ecommerce-user
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/user_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  product-service:
+    build:
+      context: ../../backend
+      dockerfile: product-service/Dockerfile
+    container_name: ecommerce-product
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/product_db
+      SPRING_DATA_REDIS_HOST: redis_cache
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  search-service:
+    build:
+      context: ../../backend
+      dockerfile: search-service/Dockerfile
+    container_name: ecommerce-search
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      <<: *common-env
+      SPRING_DATA_ELASTICSEARCH_URIS: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build:
+      context: ../../backend
+      dockerfile: order-service/Dockerfile
+    container_name: ecommerce-order
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/order_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  payment-service:
+    build:
+      context: ../../backend
+      dockerfile: payment-service/Dockerfile
+    container_name: ecommerce-payment
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/payment_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  chat-service:
+    build:
+      context: ../../backend
+      dockerfile: chat-service/Dockerfile
+    container_name: ecommerce-chat
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/chat_db
+      SPRING_DATA_REDIS_HOST: redis_cache
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  notification-service:
+    build:
+      context: ../../backend
+      dockerfile: notification-service/Dockerfile
+    container_name: ecommerce-notification
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/notification_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  analytics-service:
+    build:
+      context: ../../backend
+      dockerfile: analytics-service/Dockerfile
+    container_name: ecommerce-analytics
+    restart: unless-stopped
+    ports:
+      - "8009:8009"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/analytics_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  saga-orchestrator:
+    build:
+      context: ../../backend
+      dockerfile: saga-orchestrator/Dockerfile
+    container_name: ecommerce-saga
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      <<: [*common-env, *db-env]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/saga_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  api-gateway:
+    build:
+      context: ../../backend
+      dockerfile: api-gateway/Dockerfile
+    container_name: ecommerce-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *common-env
+      SPRING_DATA_REDIS_HOST: redis_cache
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      redis_cache:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # FRONTEND
+  # ============================================================
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: ecommerce-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # MONITORING (profile: monitoring)
+  # ============================================================
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.2
     container_name: ecommerce-kibana
     restart: unless-stopped
     ports:
       - "${KIBANA_PORT:-5601}:5601"
+    profiles: ["monitoring"]
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     depends_on:
@@ -124,9 +443,10 @@ services:
     restart: unless-stopped
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
+    profiles: ["monitoring"]
     volumes:
-      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ../monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - ../../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../../monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -139,10 +459,11 @@ services:
     container_name: ecommerce-grafana
     restart: unless-stopped
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "${GRAFANA_PORT:-3001}:3000"
+    profiles: ["monitoring"]
     volumes:
-      - ../monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ../monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ../../monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ../../monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - grafana_data:/var/lib/grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
@@ -158,8 +479,9 @@ services:
     restart: unless-stopped
     ports:
       - "${LOKI_PORT:-3100}:3100"
+    profiles: ["monitoring"]
     volumes:
-      - ../monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - ../../monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml
       - loki_data:/loki
     command: -config.file=/etc/loki/loki-config.yml
     networks:
@@ -173,17 +495,8 @@ services:
       - "${JAEGER_UI_PORT:-16686}:16686"
       - "4318:4318"
       - "4317:4317"
+    profiles: ["monitoring"]
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     networks:
       - ecommerce-network
-
-volumes:
-  postgres_data:
-  redis_data:
-  zookeeper_data:
-  kafka_data:
-  elasticsearch_data:
-  prometheus_data:
-  grafana_data:
-  loki_data:
