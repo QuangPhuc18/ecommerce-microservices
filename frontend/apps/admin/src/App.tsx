@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -12,8 +12,10 @@ import {
   Trash2,
   CheckCircle,
   RefreshCw,
-  ShoppingBag as OrderIcon
+  ClipboardList as OrderIcon
 } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 interface Product {
   id: number;
@@ -76,23 +78,94 @@ export default function App() {
   // Seed form variables
   const [seedProductTitle, setSeedProductTitle] = useState('Test iPhone 15 Pro');
   const [seedProductPrice, setSeedProductPrice] = useState('1200.00');
+  const [seedOrderProductId, setSeedOrderProductId] = useState('');
+  const [seedOrderQuantity, setSeedOrderQuantity] = useState('1');
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('admin_token');
+    setToken(null);
+    setProducts([]);
+    setReports([]);
+    setOrders([]);
+    setLogs([]);
+  }, []);
+
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
+    const headers = {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 || res.status === 403) {
+      handleLogout();
+      throw new Error('Unauthorized or Session Expired');
+    }
+    return res;
+  }, [token, handleLogout]);
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statRes, prodRes, repRes, orderRes, logsRes] = await Promise.all([
+        fetchWithAuth(`${API_BASE_URL}/api/v1/admin/statistics`),
+        fetchWithAuth(`${API_BASE_URL}/api/v1/products?page=0&size=50`),
+        fetchWithAuth(`${API_BASE_URL}/api/v1/reports?page=0&size=50`),
+        fetchWithAuth(`${API_BASE_URL}/api/v1/orders/admin?page=0&size=50`),
+        fetchWithAuth(`${API_BASE_URL}/api/v1/admin/logs?page=0&size=50`)
+      ]);
+
+      if (statRes.ok) {
+        const stats = await statRes.json();
+        setStatistics(stats);
+      }
+      if (prodRes.ok) {
+        const pData = await prodRes.json();
+        setProducts(pData.products || []);
+      }
+      if (repRes.ok) {
+        const rData = await repRes.json();
+        setReports(rData.content || []);
+      }
+      if (orderRes.ok) {
+        const oData = await orderRes.json();
+        setOrders(oData.orders || []);
+      }
+      if (logsRes.ok) {
+        const lData = await logsRes.json();
+        setLogs(lData.content || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchWithAuth]);
 
   useEffect(() => {
     if (token) {
       fetchDashboardData();
     }
-  }, [token]);
+  }, [token, fetchDashboardData]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     try {
-      const res = await fetch('http://localhost:8080/api/v1/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      if (!res.ok) throw new Error('Invalid email or password');
+      if (!res.ok) {
+        let errMsg = 'Invalid email or password';
+        try {
+          const errData = await res.json();
+          if (errData && errData.message) {
+            errMsg = errData.message;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       localStorage.setItem('admin_token', data.accessToken);
       setToken(data.accessToken);
@@ -105,12 +178,21 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      const res = await fetch('http://localhost:8080/api/v1/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, phone, fullName })
       });
-      if (!res.ok) throw new Error('Registration failed. Ensure email contains admin for ROLE_ADMIN');
+      if (!res.ok) {
+        let errMsg = 'Registration failed. Ensure email ends with @c2c.com and contains admin for ROLE_ADMIN';
+        try {
+          const errData = await res.json();
+          if (errData && errData.message) {
+            errMsg = errData.message;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       localStorage.setItem('admin_token', data.accessToken);
       setToken(data.accessToken);
@@ -119,71 +201,10 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    setToken(null);
-    setProducts([]);
-    setReports([]);
-    setOrders([]);
-    setLogs([]);
-  };
-
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const headers = {
-      ...(options.headers || {}),
-      'Authorization': `Bearer ${token}`
-    };
-    return fetch(url, { ...options, headers });
-  };
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Statistics
-      const statRes = await fetchWithAuth('http://localhost:8080/api/v1/admin/statistics');
-      if (statRes.ok) {
-        const stats = await statRes.json();
-        setStatistics(stats);
-      }
-
-      // Products
-      const prodRes = await fetchWithAuth('http://localhost:8080/api/v1/products?page=0&size=50');
-      if (prodRes.ok) {
-        const pData = await prodRes.json();
-        setProducts(pData.products || []);
-      }
-
-      // Reports
-      const repRes = await fetchWithAuth('http://localhost:8080/api/v1/reports?page=0&size=50');
-      if (repRes.ok) {
-        const rData = await repRes.json();
-        setReports(rData.content || []);
-      }
-
-      // Orders
-      const orderRes = await fetchWithAuth('http://localhost:8080/api/v1/orders?page=0&size=50');
-      if (orderRes.ok) {
-        const oData = await orderRes.json();
-        setOrders(oData.orders || []);
-      }
-
-      // Logs
-      const logsRes = await fetchWithAuth('http://localhost:8080/api/v1/admin/logs?page=0&size=50');
-      if (logsRes.ok) {
-        const lData = await logsRes.json();
-        setLogs(lData.content || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Moderation Mutations
   const updateProductStatus = async (productId: number, newStatus: string) => {
     try {
-      const res = await fetchWithAuth(`http://localhost:8080/api/v1/products/${productId}`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/products/${productId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -199,7 +220,7 @@ export default function App() {
   const deleteProduct = async (productId: number) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      const res = await fetchWithAuth(`http://localhost:8080/api/v1/products/${productId}`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/products/${productId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -212,7 +233,7 @@ export default function App() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const res = await fetchWithAuth(`http://localhost:8080/api/v1/orders/${orderId}/status`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/orders/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, note: 'Admin updated order status' })
@@ -227,7 +248,7 @@ export default function App() {
 
   const resolveReport = async (reportId: string) => {
     try {
-      const res = await fetchWithAuth(`http://localhost:8080/api/v1/reports/${reportId}/resolve`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/reports/${reportId}/resolve`, {
         method: 'PUT'
       });
       if (res.ok) {
@@ -241,7 +262,7 @@ export default function App() {
   // Seeding tools
   const seedProduct = async () => {
     try {
-      const res = await fetchWithAuth('http://localhost:8080/api/v1/products', {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -254,6 +275,10 @@ export default function App() {
         })
       });
       if (res.ok) {
+        const prodData = await res.json();
+        if (prodData && prodData.id) {
+          setSeedOrderProductId(prodData.id.toString());
+        }
         fetchDashboardData();
         alert('Product seeded successfully!');
       }
@@ -264,7 +289,7 @@ export default function App() {
 
   const seedReport = async (prodId: number) => {
     try {
-      const res = await fetchWithAuth('http://localhost:8080/api/v1/reports', {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -276,6 +301,40 @@ export default function App() {
       if (res.ok) {
         fetchDashboardData();
         alert('Product report seeded successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const seedOrder = async () => {
+    if (!seedOrderProductId) {
+      alert('Please specify a Product ID to seed an order!');
+      return;
+    }
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/v1/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: parseInt(seedOrderProductId),
+          quantity: parseInt(seedOrderQuantity),
+          shippingAddress: {
+            fullName: 'Test Buyer',
+            phone: '0987654321',
+            address: '123 Test St',
+            ward: 'Ward 1',
+            district: 'District 1',
+            province: 'Province 1'
+          }
+        })
+      });
+      if (res.ok) {
+        fetchDashboardData();
+        alert('Order seeded successfully!');
+      } else {
+        const errorText = await res.text();
+        alert(`Failed to seed order: ${errorText}`);
       }
     } catch (err) {
       console.error(err);
@@ -311,7 +370,7 @@ export default function App() {
             )}
             <div>
               <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Email</label>
-              <input type="email" required placeholder={isRegister ? 'Must contain admin@c2c.com' : 'admin@c2c.com'} value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+              <input type="email" required placeholder={isRegister ? 'Must end with @c2c.com' : 'admin@c2c.com'} value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Password</label>
@@ -433,7 +492,7 @@ export default function App() {
                 {[
                   { label: 'Total Users', value: statistics.totalUsers || 0, icon: UserCheck, color: 'var(--primary)' },
                   { label: 'Total Products', value: statistics.totalProducts || 0, icon: ShoppingBag, color: 'var(--success)' },
-                  { label: 'Total Orders', value: statistics.totalOrders || 0, icon: FileText, color: 'var(--warning)' },
+                  { label: 'Total Orders', value: statistics.totalOrders || 0, icon: OrderIcon, color: 'var(--warning)' },
                   { label: 'Total Revenue', value: `${statistics.totalRevenue || 0} USD`, icon: Database, color: 'var(--danger)' }
                 ].map((card, i) => {
                   const Icon = card.icon;
@@ -539,7 +598,7 @@ export default function App() {
                               cursor: 'pointer'
                             }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} style={{ marginRight: '4px' }} />
                             Delete
                           </button>
                         </div>
@@ -706,40 +765,79 @@ export default function App() {
 
           {activeTab === 'sandbox' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-              {/* Product Seeder */}
-              <div style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: 0, marginBottom: '20px' }}>
-                  <PlusCircle size={22} color="var(--primary)" />
-                  Seed Test Product
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Product Name</label>
-                    <input type="text" value={seedProductTitle} onChange={e => setSeedProductTitle(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                {/* Product Seeder */}
+                <div style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: 0, marginBottom: '20px' }}>
+                    <PlusCircle size={22} color="var(--primary)" />
+                    Seed Test Product
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Product Name</label>
+                      <input type="text" value={seedProductTitle} onChange={e => setSeedProductTitle(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Price (USD)</label>
+                      <input type="number" value={seedProductPrice} onChange={e => setSeedProductPrice(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+                    </div>
+                    <button 
+                      onClick={seedProduct}
+                      style={{
+                        padding: '12px',
+                        background: 'var(--primary)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <Database size={16} />
+                      Seed Product
+                    </button>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Price (USD)</label>
-                    <input type="number" value={seedProductPrice} onChange={e => setSeedProductPrice(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+                </div>
+
+                {/* Order Seeder */}
+                <div style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: 0, marginBottom: '20px' }}>
+                    <PlusCircle size={22} color="var(--success)" />
+                    Seed Test Order
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Product ID to Order</label>
+                      <input type="number" value={seedOrderProductId} placeholder="Seeded product ID" onChange={e => setSeedOrderProductId(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Quantity</label>
+                      <input type="number" min="1" value={seedOrderQuantity} onChange={e => setSeedOrderQuantity(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
+                    </div>
+                    <button 
+                      onClick={seedOrder}
+                      style={{
+                        padding: '12px',
+                        background: 'var(--success)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <Database size={16} />
+                      Seed Order
+                    </button>
                   </div>
-                  <button 
-                    onClick={seedProduct}
-                    style={{
-                      padding: '12px',
-                      background: 'var(--primary)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <Database size={16} />
-                    Seed Product
-                  </button>
                 </div>
               </div>
 
@@ -751,11 +849,14 @@ export default function App() {
                     This Sandbox tab triggers simulated user actions inside the microservice network. Use the product seeder to instantly create products in the <code>product-service</code> database.
                   </p>
                   <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
-                    Once seeded, you can view the new products in the <strong>Products</strong> tab, submit mock reports against them, or test changing their moderation status.
+                    Use the order seeder to submit a test order. It requires a valid Product ID. Seeding an order triggers the Saga transaction coordinator across the services.
+                  </p>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                    Once seeded, you can view the new products in the <strong>Products</strong> tab, view the orders in the <strong>Orders</strong> tab, or resolve reports in the <strong>Reports</strong> tab.
                   </p>
                 </div>
                 <div style={{ padding: '16px', background: 'var(--bg-primary)', borderLeft: '4px solid var(--primary)', borderRadius: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <strong>API Gateway Target:</strong> http://localhost:8080
+                  <strong>API Gateway Target:</strong> {API_BASE_URL}
                 </div>
               </div>
             </div>

@@ -46,6 +46,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByBuyer(buyerId, page, size));
     }
 
+    @GetMapping("/admin")
+    public ResponseEntity<OrderListResponse> getAllOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(orderService.getAllOrders(page, size));
+    }
+
     @PutMapping("/{id}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(@PathVariable UUID id,
                                                             @Valid @RequestBody OrderStatusUpdateRequest request,

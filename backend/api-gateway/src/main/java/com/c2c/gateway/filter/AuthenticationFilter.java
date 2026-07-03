@@ -25,17 +25,25 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            String path = exchange.getRequest().getURI().getPath();
+            var cleanRequest = exchange.getRequest().mutate()
+                    .headers(headers -> {
+                        headers.remove("X-User-Id");
+                        headers.remove("X-User-Role");
+                    })
+                    .build();
+            var cleanExchange = exchange.mutate().request(cleanRequest).build();
+
+            String path = cleanExchange.getRequest().getURI().getPath();
 
             if (jwtUtil.isPublicPath(path)) {
-                return chain.filter(exchange);
+                return chain.filter(cleanExchange);
             }
 
-            String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+            String authHeader = cleanExchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
             if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
                 log.warn("Missing or invalid Authorization header for path: {}", path);
-                ServerHttpResponse response = exchange.getResponse();
+                ServerHttpResponse response = cleanExchange.getResponse();
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return response.setComplete();
             }
@@ -44,7 +52,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
             if (!jwtUtil.isValid(token)) {
                 log.warn("Invalid JWT token for path: {}", path);
-                ServerHttpResponse response = exchange.getResponse();
+                ServerHttpResponse response = cleanExchange.getResponse();
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return response.setComplete();
             }
@@ -52,7 +60,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             try {
                 String userId = jwtUtil.extractUserId(token).toString();
                 String role = jwtUtil.extractRole(token);
-                exchange = exchange.mutate()
+                cleanExchange = cleanExchange.mutate()
                         .request(r -> r.header("X-User-Id", userId)
                                        .header("X-User-Role", role != null ? role : "ROLE_USER"))
                         .build();
@@ -60,7 +68,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 log.error("Failed to extract user info from token", e);
             }
 
-            return chain.filter(exchange);
+            return chain.filter(cleanExchange);
         };
     }
 

@@ -45,7 +45,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(request.getEmail() != null && request.getEmail().contains("admin") ? User.Role.ROLE_ADMIN : User.Role.ROLE_USER)
+                .role(request.getEmail() != null && request.getEmail().toLowerCase().endsWith("@c2c.com") && request.getEmail().toLowerCase().contains("admin") ? User.Role.ROLE_ADMIN : User.Role.ROLE_USER)
                 .active(true)
                 .build();
         user = userRepository.save(user);

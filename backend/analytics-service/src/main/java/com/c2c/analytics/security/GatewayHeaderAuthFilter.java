@@ -25,11 +25,16 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
         String roleStr = request.getHeader("X-User-Role");
 
         if (StringUtils.hasText(userIdStr)) {
-            UUID userId = UUID.fromString(userIdStr);
-            String role = StringUtils.hasText(roleStr) ? roleStr : "ROLE_USER";
-            var authorities = List.of(new SimpleGrantedAuthority(role));
-            var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            try {
+                UUID userId = UUID.fromString(userIdStr);
+                String role = StringUtils.hasText(roleStr) ? roleStr : "ROLE_USER";
+                var authorities = List.of(new SimpleGrantedAuthority(role));
+                var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (IllegalArgumentException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid user ID format");
+                return;
+            }
         }
         chain.doFilter(request, response);
     }

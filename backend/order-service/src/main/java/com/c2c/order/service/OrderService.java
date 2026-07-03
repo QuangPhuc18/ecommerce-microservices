@@ -94,6 +94,11 @@ public class OrderService {
         return toListResponse(orderPage);
     }
 
+    public OrderListResponse getAllOrders(int page, int size) {
+        Page<Order> orderPage = orderRepository.findAll(PageRequest.of(page, size));
+        return toListResponse(orderPage);
+    }
+
     public OrderListResponse getOrdersBySeller(UUID sellerId, int page, int size) {
         Page<Order> orderPage = orderRepository.findBySellerId(sellerId, PageRequest.of(page, size));
         return toListResponse(orderPage);
