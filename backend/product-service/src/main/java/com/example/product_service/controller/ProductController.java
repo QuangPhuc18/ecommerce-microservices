@@ -11,12 +11,27 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Arrays;
+import com.example.product_service.dto.CategoryDto;
+
+import com.example.product_service.repository.CategoryRepository;
+import java.util.stream.Collectors;
+
 // ProductController.java
 @RestController
 @RequestMapping("/products")    
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
+    private final CategoryRepository categoryRepository;
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<CategoryDto>> getCategories() {
+        List<CategoryDto> categories = categoryRepository.findAll().stream()
+            .map(cat -> new CategoryDto(String.valueOf(cat.getId()), cat.getName(), cat.getIconName()))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(categories);
+    }
 
     @GetMapping
     public ResponseEntity<Page<Product>> searchProducts(
@@ -37,7 +52,11 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+    public ResponseEntity<Product> createProduct(
+            @RequestBody Product product,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        // Gán userId cho sản phẩm nếu hệ thống hỗ trợ
+        // product.setSellerId(userId);
         return ResponseEntity.ok(productService.createProduct(product));
     }
 }

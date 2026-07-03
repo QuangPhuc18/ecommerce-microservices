@@ -9,6 +9,17 @@ spring:
       discovery:
         locator:
           enabled: true
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
       routes:
         # Chỉ đường cho Order Service
         - id: order-service
@@ -63,7 +74,32 @@ spring:
           predicates:
             - Path=/payments/**
 
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service
+        url: /USER-SERVICE/v3/api-docs
+      - name: Order Service
+        url: /ORDER-SERVICE/v3/api-docs
+      - name: Product Service
+        url: /PRODUCT-SERVICE/v3/api-docs
+      - name: Chat Service
+        url: /CHAT-SERVICE/v3/api-docs
+      - name: Media Service
+        url: /MEDIA-SERVICE/v3/api-docs
+      - name: Notification Service
+        url: /NOTIFICATION-SERVICE/v3/api-docs
+      - name: Review Service
+        url: /REVIEW-SERVICE/v3/api-docs
+      - name: Payment Service
+        url: /PAYMENT-SERVICE/v3/api-docs
+  api-docs:
+    path: /v3/api-docs
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+jwt:
+  secret: VGVzdFNlY3JldEtleUZvckp3dEF1dGhlbnRpY2F0aW9uTWljcm9zZXJ2aWNlcw==

@@ -27,12 +27,18 @@ public class JwtTokenProvider {
 
     public Long getUserIdFromToken(String token) {
         Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-        return Long.parseLong(claims.getSubject());
+        Object userIdObj = claims.get("userId");
+        if (userIdObj instanceof Integer) {
+            return ((Integer) userIdObj).longValue();
+        } else if (userIdObj instanceof Long) {
+            return (Long) userIdObj;
+        }
+        return Long.parseLong(userIdObj.toString());
     }
 
     public String getEmailFromToken(String token) {
         Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-        return claims.get("email", String.class);
+        return claims.getSubject();
     }
 
     public boolean validateToken(String authToken) {

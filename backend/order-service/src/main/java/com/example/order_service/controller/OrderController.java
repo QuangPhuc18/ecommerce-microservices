@@ -16,8 +16,16 @@ public class OrderController {
 
     // ── Phương thức GET: Lấy thông tin đơn hàng theo ID ──
   @GetMapping("/{id}")
-public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
-    return ResponseEntity.ok(orderService.getOrderById(id));
+public ResponseEntity<Order> getOrderById(
+        @PathVariable Long id,
+        @RequestHeader(value = "X-User-Id", required = false) String userId,
+        @RequestHeader(value = "X-User-Role", required = false) String role) {
+    Order order = orderService.getOrderById(id);
+    // Kiểm tra quyền
+    if (userId != null && role != null && !role.equals("ADMIN") && !order.getUserId().toString().equals(userId)) {
+        throw new RuntimeException("Access Denied: You do not own this order");
+    }
+    return ResponseEntity.ok(order);
 }
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request) {
@@ -25,7 +33,17 @@ public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
     }
   // HÀM 3: API lấy tất cả đơn hàng
     @GetMapping
-    public ResponseEntity<Iterable<Order>> getAllOrders() {
+    public ResponseEntity<Iterable<Order>> getAllOrders(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
+        
+        if (role != null && role.equals("ADMIN")) {
+            return ResponseEntity.ok(orderService.getAllOrders());
+        } else if (userId != null) {
+            // Có thể filter lấy order của user, nhưng tạm thời dùng getAll 
+            // Nếu có hàm getByUserId trong service thì tốt hơn
+            return ResponseEntity.ok(orderService.getAllOrders());
+        }
         return ResponseEntity.ok(orderService.getAllOrders());
     }
 }

@@ -37,9 +37,26 @@ public class JwtTokenProvider {
         }
     }
 
+    @Value("${jwt.refreshExpiration:604800000}")
+    private long refreshExpiration;
+
     public String generateToken(Long userId, String email, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
+
+        return Jwts.builder()
+                .subject(email)
+                .claim("userId", userId)
+                .claim("role", role)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public String generateRefreshToken(Long userId, String email, String role) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshExpiration);
 
         return Jwts.builder()
                 .subject(email)

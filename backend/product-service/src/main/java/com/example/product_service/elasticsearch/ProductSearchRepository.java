@@ -6,6 +6,6 @@ import java.util.List;
 
 public interface ProductSearchRepository extends ElasticsearchRepository<ProductDocument, String> {
     
-    // Tìm kiếm Full-text sai chính tả (fuzzy)
-    List<ProductDocument> findByNameFuzzyOrDescriptionFuzzy(String name, String description);
+    // Tìm kiếm Full-text (sử dụng Containing thay cho Fuzzy)
+    List<ProductDocument> findByNameContainingOrDescriptionContaining(String name, String description);
 }

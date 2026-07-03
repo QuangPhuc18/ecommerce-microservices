@@ -218,6 +218,14 @@ services:
     networks:
       - microservice-network
 
+  redis:
+    image: redis:alpine
+    container_name: microservice-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservice-network
+
 volumes:
   mysql_data:
   media_data:
