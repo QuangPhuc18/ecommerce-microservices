@@ -44,20 +44,20 @@ services:
       - ecommerce-network
 
   zookeeper:
-    image: bitnami/zookeeper:3.8
+    image: zookeeper:3.8
     container_name: ecommerce-zookeeper
     restart: unless-stopped
     ports:
       - "2181:2181"
     environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_MY_ID: 1
     volumes:
-      - zookeeper_data:/bitnami/zookeeper
+      - zookeeper_data:/data
     networks:
       - ecommerce-network
 
   kafka:
-    image: bitnami/kafka:3.6
+    image: bitnamilegacy/kafka:3.6
     container_name: ecommerce-kafka
     restart: unless-stopped
     ports:
