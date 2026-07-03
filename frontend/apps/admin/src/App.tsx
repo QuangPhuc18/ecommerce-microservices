@@ -62,6 +62,7 @@ export default function App() {
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   
   // Dashboard & Lists Data State
   const [products, setProducts] = useState<Product[]>([]);
@@ -105,6 +106,7 @@ export default function App() {
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
+    setDashboardError(null);
     try {
       const [statRes, prodRes, repRes, orderRes, logsRes] = await Promise.all([
         fetchWithAuth(`${API_BASE_URL}/api/v1/admin/statistics`),
@@ -134,8 +136,9 @@ export default function App() {
         const lData = await logsRes.json();
         setLogs(lData.content || []);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setDashboardError(err.message || 'Failed to fetch dashboard data. Make sure all microservices are online.');
     } finally {
       setLoading(false);
     }
@@ -486,6 +489,11 @@ export default function App() {
 
         {/* Content Tabs */}
         <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+          {dashboardError && (
+            <div style={{ color: 'var(--danger)', background: 'var(--danger-bg)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '14px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              {dashboardError}
+            </div>
+          )}
           {activeTab === 'dashboard' && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '40px' }}>
@@ -561,6 +569,7 @@ export default function App() {
                       <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{prod.sellerName}</td>
                       <td style={{ padding: '16px' }}>
                         <select 
+                          aria-label="Update product status"
                           value={prod.status} 
                           onChange={(e) => updateProductStatus(prod.id, e.target.value)}
                           style={{
@@ -705,6 +714,7 @@ export default function App() {
                       <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>{order.buyerId}</td>
                       <td style={{ padding: '16px' }}>
                         <select 
+                          aria-label="Update order status"
                           value={order.status} 
                           onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                           style={{
