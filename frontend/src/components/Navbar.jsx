@@ -1,0 +1,142 @@
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
+
+const Navbar = () => {
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [keyword, setKeyword] = useState('');
+  const [userProfile, setUserProfile] = useState(null);
+
+  React.useEffect(() => {
+    if (user?.userId) {
+      import('../services/api').then(module => {
+        const api = module.default;
+        api.get(`/users/${user.userId}`)
+          .then(res => setUserProfile(res.data))
+          .catch(err => console.error(err));
+      });
+    }
+  }, [user]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (keyword.trim()) {
+      navigate(`/search?keyword=${encodeURIComponent(keyword.trim())}`);
+    } else {
+      navigate(`/search`);
+    }
+  };
+
+  return (
+    <>
+      {/* TopNavBar (Desktop) */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50 h-16 shadow-sm bg-surface hidden md:flex justify-center">
+        <div className="w-full max-w-container-max px-4 md:px-gutter flex justify-between items-center h-full">
+          <div className="flex items-center gap-6">
+            {/* Brand Logo */}
+            <Link className="flex-shrink-0" to="/">
+              <img alt="ĐồCũ Logo" className="h-10 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLt1b6uRk0WeBQP_Vq4eC801Bxw7riM83V7hgySe2KY4ZPcNCBc_I7CYH866KRFfrUpT6ZkHNm1qm7Q2KReEjcyMBK8MfeRN6SBrmX9xZv_0d1rzMwxd79c7y8BCjpmYmZefC0UTUYUNeNPGqLy9TTYR-WDs5GLAmF_ItBY6v86-Kk4C63MA5QwmBPIGxrGUJAPAkBuWJRjcVBAIPGrLMwv6xK3gVEcQVvCXqZIbBlkOP9I_glISv1g_PTk"/>
+            </Link>
+            
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="flex items-center bg-surface-container-low rounded-xl px-4 py-2 border border-outline-variant focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container transition-all">
+              <div className="flex items-center gap-2 border-r border-outline-variant pr-3 mr-3 text-on-surface-variant cursor-pointer">
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                <span className="font-body-md text-body-md whitespace-nowrap">Toàn quốc</span>
+                <span className="material-symbols-outlined text-sm">expand_more</span>
+              </div>
+              <input 
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="bg-transparent border-none focus:ring-0 text-on-surface w-[300px] font-body-md text-body-md outline-none" 
+                placeholder="Tìm kiếm sản phẩm..." 
+                type="text"
+              />
+              <button type="submit" className="text-primary-container hover:text-primary transition-colors ml-2">
+                <span className="material-symbols-outlined">search</span>
+              </button>
+            </form>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Trailing Icon Actions - Always Visible */}
+            <div className="flex gap-2">
+              <button aria-label="notifications" className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
+                <span className="material-symbols-outlined">notifications</span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+              </button>
+              <Link to="/chat" aria-label="chat" className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+                <span className="material-symbols-outlined">chat</span>
+              </Link>
+            </div>
+            
+            {/* Profile or Login */}
+            {user?.isLoggedIn ? (
+              <Link to="/manage-posts" className="flex items-center gap-2 p-1 hover:bg-surface-container-low rounded-full transition-colors" title="Quản lý cá nhân">
+                {userProfile?.avatarUrl ? (
+                  <img className="w-8 h-8 rounded-full border border-outline-variant object-cover" alt="Avatar" src={userProfile.avatarUrl} />
+                ) : (
+                  <div className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center bg-gray-100">
+                    <span className="material-symbols-outlined text-gray-400">person</span>
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <Link to="/login" className="font-body-md font-semibold text-primary hover:underline px-2">Đăng nhập</Link>
+            )}
+
+            {/* Trailing Primary Action */}
+            <Link to="/post" className="bg-primary-container text-on-primary font-headline-md text-headline-md px-4 py-2 rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap">
+              Đăng tin
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* TopNavBar (Mobile Optimized) */}
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 h-16 shadow-sm bg-surface md:hidden">
+        <div className="flex items-center gap-sm">
+          <Link to="/">
+            <img alt="ĐồCũ Logo" className="h-8 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLt1b6uRk0WeBQP_Vq4eC801Bxw7riM83V7hgySe2KY4ZPcNCBc_I7CYH866KRFfrUpT6ZkHNm1qm7Q2KReEjcyMBK8MfeRN6SBrmX9xZv_0d1rzMwxd79c7y8BCjpmYmZefC0UTUYUNeNPGqLy9TTYR-WDs5GLAmF_ItBY6v86-Kk4C63MA5QwmBPIGxrGUJAPAkBuWJRjcVBAIPGrLMwv6xK3gVEcQVvCXqZIbBlkOP9I_glISv1g_PTk"/>
+          </Link>
+        </div>
+        <div className="flex-1 px-md">
+          <form onSubmit={handleSearch} className="relative w-full">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+            <input 
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="w-full bg-surface-container-low border border-surface-variant text-on-surface font-body-md rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" 
+              placeholder="Tìm kiếm trên ĐồCũ..." 
+              type="text"
+            />
+          </form>
+        </div>
+        <div className="flex items-center gap-sm text-primary">
+          <button className="p-2 hover:bg-surface-container-low rounded-full transition-colors relative">
+            <span className="material-symbols-outlined">notifications</span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+          </button>
+          {user?.isLoggedIn ? (
+            <Link to="/manage-posts" className="p-2 hover:bg-surface-container-low rounded-full transition-colors" title="Quản lý cá nhân">
+              {userProfile?.avatarUrl ? (
+                <img className="w-8 h-8 rounded-full object-cover" alt="Avatar" src={userProfile.avatarUrl} />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100">
+                  <span className="material-symbols-outlined text-gray-400">person</span>
+                </div>
+              )}
+            </Link>
+          ) : (
+            <Link to="/login" className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+              <span className="material-symbols-outlined">login</span>
+            </Link>
+          )}
+        </div>
+      </header>
+    </>
+  );
+};
+
+export default Navbar;

@@ -16,8 +16,8 @@ import org.springframework.data.jpa.domain.Specification;
 public class ProductService {
     private final ProductRepository productRepository;
 
-    public Page<Product> searchProducts(String keyword, String category, String location, String condition, String status, Double minPrice, Double maxPrice, Pageable pageable) {
-        Specification<Product> spec = ProductSpecification.filterProducts(keyword, category, location, condition, status, minPrice, maxPrice);
+    public Page<Product> searchProducts(String keyword, String category, String location, String condition, String status, Double minPrice, Double maxPrice, Long sellerId, Pageable pageable) {
+        Specification<Product> spec = ProductSpecification.filterProducts(keyword, category, location, condition, status, minPrice, maxPrice, sellerId);
         return productRepository.findAll(spec, pageable);
     }
 
@@ -32,5 +32,24 @@ public class ProductService {
             product.setStatus("AVAILABLE");
         }
         return productRepository.save(product);
+    }
+
+    public Product updateProduct(Long id, Product updatedProduct) {
+        Product product = getProductById(id);
+        product.setName(updatedProduct.getName());
+        product.setDescription(updatedProduct.getDescription());
+        product.setPrice(updatedProduct.getPrice());
+        product.setItemCondition(updatedProduct.getItemCondition());
+        product.setCategory(updatedProduct.getCategory());
+        product.setLocation(updatedProduct.getLocation());
+        product.setStatus(updatedProduct.getStatus());
+        product.setApproved(updatedProduct.isApproved());
+        product.setStock(updatedProduct.getStock());
+        return productRepository.save(product);
+    }
+
+    public void deleteProduct(Long id) {
+        Product product = getProductById(id);
+        productRepository.delete(product);
     }
 }

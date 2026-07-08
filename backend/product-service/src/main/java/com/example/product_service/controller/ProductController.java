@@ -25,14 +25,6 @@ public class ProductController {
     private final ProductService productService;
     private final CategoryRepository categoryRepository;
 
-    @GetMapping("/categories")
-    public ResponseEntity<List<CategoryDto>> getCategories() {
-        List<CategoryDto> categories = categoryRepository.findAll().stream()
-            .map(cat -> new CategoryDto(String.valueOf(cat.getId()), cat.getName(), cat.getIconName()))
-            .collect(Collectors.toList());
-        return ResponseEntity.ok(categories);
-    }
-
     @GetMapping
     public ResponseEntity<Page<Product>> searchProducts(
             @RequestParam(required = false) String keyword,
@@ -42,8 +34,11 @@ public class ProductController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
-            Pageable pageable) {
-        return ResponseEntity.ok(productService.searchProducts(keyword, category, location, condition, status, minPrice, maxPrice, pageable));
+            @RequestParam(required = false) Long sellerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "bumpedAt"));
+        return ResponseEntity.ok(productService.searchProducts(keyword, category, location, condition, status, minPrice, maxPrice, sellerId, pageable));
     }
 
     @GetMapping("/{id}")
@@ -55,8 +50,46 @@ public class ProductController {
     public ResponseEntity<Product> createProduct(
             @RequestBody Product product,
             @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        // Gán userId cho sản phẩm nếu hệ thống hỗ trợ
-        // product.setSellerId(userId);
+        if (userId != null && !userId.isEmpty()) {
+            product.setSellerId(Long.parseLong(userId));
+        } else {
+            // Nếu không có userId từ Gateway, có thể ném Exception hoặc gán mặc định (ví dụ: Admin ID)
+            product.setSellerId(0L); 
+        }
+        product.setCreatedAt(java.time.LocalDateTime.now());
+        product.setBumpedAt(java.time.LocalDateTime.now());
         return ResponseEntity.ok(productService.createProduct(product));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable Long id,
+            @RequestBody Product product) {
+        return ResponseEntity.ok(productService.updateProduct(id, product));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/bump")
+    public ResponseEntity<?> bumpProduct(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        Product product = productService.getProductById(id);
+        if (product == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!product.getSellerId().equals(Long.parseLong(userId))) {
+            return ResponseEntity.status(403).body("Bạn không có quyền đẩy tin này");
+        }
+        product.setBumpedAt(java.time.LocalDateTime.now());
+        productService.updateProduct(id, product);
+        return ResponseEntity.ok().build();
     }
 }

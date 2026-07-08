@@ -23,6 +23,9 @@ public class Product {
     private String itemCondition; // NEW, USED
     private String status; // ACTIVE, SOLD
 
+    @Column(name = "seller_id", nullable = false)
+    private Long sellerId;
+
     @Column(name = "is_approved", nullable = false)
     private boolean isApproved = true; // Admin approval flag
 
@@ -31,6 +34,12 @@ public class Product {
     private Double longitude;
 
     private LocalDateTime createdAt;
+    
+    @Column(name = "bumped_at")
+    private LocalDateTime bumpedAt; // Thời gian đẩy tin
+
+    @Column(name = "attributes", columnDefinition = "TEXT")
+    private String attributes; // Lưu trữ JSON của các thuộc tính động
 
     @ElementCollection
     private java.util.List<String> imageUrls;

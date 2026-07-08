@@ -12,6 +12,9 @@ public class RouteValidator {
     public static final List<String> openApiEndpoints = List.of(
             "/auth/register",
             "/auth/login",
+            "/users/register",
+            "/users/login",
+            "/products/categories",
             "/auth/refresh",
             "/eureka",
             "/v3/api-docs",
@@ -19,8 +22,18 @@ public class RouteValidator {
     );
 
     public Predicate<ServerHttpRequest> isSecured =
-            request -> openApiEndpoints
-                    .stream()
-                    .noneMatch(uri -> request.getURI().getPath().contains(uri));
+            request -> {
+                // Cho phép tất cả GET request đến /products (xem danh sách, xem chi tiết)
+                if (request.getMethod().name().equals("GET") && request.getURI().getPath().startsWith("/products")) {
+                    return false;
+                }
+                // Cho phép tải ảnh công khai
+                if (request.getMethod().name().equals("GET") && request.getURI().getPath().startsWith("/media/images")) {
+                    return false;
+                }
+                return openApiEndpoints
+                        .stream()
+                        .noneMatch(uri -> request.getURI().getPath().contains(uri));
+            };
 
 }
