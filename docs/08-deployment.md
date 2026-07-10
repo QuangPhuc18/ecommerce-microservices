@@ -1,14 +1,14 @@
-# 08. Deployment
+# 08. Triển khai hệ thống (Deployment)
 
-This document describes the containerization, environment configuration, networks, volumes, and execution steps for deploying the **ĐồCũ** secondhand e-commerce platform.
+Tài liệu này hướng dẫn cách đóng gói container, cấu hình biến môi trường, mạng, phân vùng lưu trữ và các bước chạy hệ thống chợ đồ cũ **ĐồCũ** ở môi trường cục bộ.
 
 ---
 
-## 1. Containerization (Docker)
+## 1. Đóng gói container (Docker)
 
-Each microservice contains a lightweight, single-stage `Dockerfile` located in its respective module directory.
+Mỗi microservice sở hữu một file cấu hình `Dockerfile` nằm tại thư mục gốc của module đó.
 
-### Dockerfile Design
+### Thiết kế Dockerfile
 ```dockerfile
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -16,101 +16,101 @@ COPY target/*.jar app.jar
 EXPOSE <PORT>
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
-* **Base Image**: `eclipse-temurin:21-jre-alpine` (providing Java 21 Runtime Environment on Alpine Linux to minimize image sizes).
-* **Port Exposure**: Exposes the port matching the service configuration.
-* **Build Dependency**: The Docker image builds rely on pre-compiled JAR binaries located in the `target/` directories, which are generated during the Maven build phase on the host machine.
+* **Base Image**: `eclipse-temurin:21-jre-alpine` (môi trường thực thi Java 21 gọn nhẹ trên nhân Linux Alpine giúp tối thiểu dung lượng ảnh).
+* **Cổng kết nối**: Mở cổng mạng tương ứng với cấu hình chạy dịch vụ.
+* **Quy trình build**: Quá trình đóng gói docker phụ thuộc vào file JAR đã được biên dịch sẵn trong thư mục `target/` bằng lệnh Maven trên máy chủ host trước đó.
 
 ---
 
-## 2. Local Orchestration (Docker Compose)
+## 2. Điều phối container cục bộ (Docker Compose)
 
-The backend services and infrastructure are orchestrated using the master `backend/docker-compose.yml` file.
+Các container dịch vụ và hạ tầng bổ trợ được quản lý tập trung thông qua file `backend/docker-compose.yml`.
 
-### 2.1 Services & Ports Mapping
-| Container Name | Service Image / Context | Internal Port | External Port | Role |
+### 2.1 Các dịch vụ và ánh xạ cổng
+| Tên Container | Hình ảnh / Thư mục ngữ cảnh | Cổng nội bộ | Cổng công khai | Vai trò |
 | --- | --- | --- | --- | --- |
-| `microservice-mysql` | `mysql:8.0` | `3306` | `3307` | Central Database Engine (User, Product, Order, Chat, Notifications, Review DBs). |
-| `microservice-redis` | `redis:alpine` | `6379` | `6379` | User Refresh Token Storage. |
-| `microservice-elasticsearch` | `elasticsearch:8.10.2` | `9200` | `9200` | Full-text search catalog (Inactive fallback). |
-| `microservice-rabbitmq` | `rabbitmq:3-management` | `5672`, `15672` | `5672`, `15672` | AMQP Message broker & dashboard. |
-| `microservice-eureka` | `./eureka-server` | `8761` | `8761` | Netflix Eureka Service Registry. |
-| `microservice-gateway` | `./api-gateway` | `8088` | `8088` | Spring Cloud API Gateway (Public entrance). |
-| `microservice-user` | `./user-service` | `8085` | `8085` | User authentication & profiles. |
-| `microservice-product` | `./product-service` | `8081` | `8081` | Product lists & categories catalog. |
-| `microservice-order` | `./order-service` | `8082` | `8082` | Transacts orders. |
-| `microservice-chat` | `./chat-service` | `8086` | `8086` | Text & media messaging. |
-| `microservice-media` | `./media-service` | `8083` | `8083` | Image storage & serving. |
-| `microservice-notification` | `./notification-service` | `8087` | `8087` | User alerts manager. |
-| `microservice-review` | `./review-service` | `8089` | `8089` | Seller reviews & ratings. |
-| `microservice-payment` | `./payment-service` | `8090` | `8090` | VNPay transaction controller. |
+| `microservice-mysql` | `mysql:8.0` | `3306` | `3307` | Hệ quản trị cơ sở dữ liệu MySQL tập trung. |
+| `microservice-redis` | `redis:alpine` | `6379` | `6379` | Cơ sở dữ liệu lưu trữ Refresh Token của người dùng. |
+| `microservice-elasticsearch` | `elasticsearch:8.10.2` | `9200` | `9200` | Công cụ phục vụ tìm kiếm nâng cao (Tạm thời chưa kích hoạt). |
+| `microservice-rabbitmq` | `rabbitmq:3-management` | `5672`, `15672` | `5672`, `15672` | Broker trung chuyển tin nhắn bất đồng bộ & trang quản lý UI. |
+| `microservice-eureka` | `./eureka-server` | `8761` | `8761` | Máy chủ Netflix Eureka lưu danh bạ dịch vụ. |
+| `microservice-gateway` | `./api-gateway` | `8088` | `8088` | API Gateway (Điểm chạm duy nhất của client). |
+| `microservice-user` | `./user-service` | `8085` | `8085` | Dịch vụ quản lý xác thực & thông tin tài khoản. |
+| `microservice-product` | `./product-service` | `8081` | `8081` | Dịch vụ quản lý sản phẩm đăng bán & danh mục. |
+| `microservice-order` | `./order-service` | `8082` | `8082` | Dịch vụ quản lý đặt hàng. |
+| `microservice-chat` | `./chat-service` | `8086` | `8086` | Dịch vụ nhắn tin thương lượng giá cả. |
+| `microservice-media` | `./media-service` | `8083` | `8083` | Dịch vụ upload và phân phối hình ảnh. |
+| `microservice-notification` | `./notification-service` | `8087` | `8087` | Dịch vụ đẩy cảnh báo cho người dùng. |
+| `microservice-review` | `./review-service` | `8089` | `8089` | Dịch vụ đánh giá độ uy tín người bán. |
+| `microservice-payment` | `./payment-service` | `8090` | `8090` | Dịch vụ tích hợp thanh toán ngân hàng VNPay. |
 
-### 2.2 Network Topology
-All containers run inside a single custom bridge network:
-* **Network Name**: `microservice-network`
+### 2.2 Cấu trúc mạng nội bộ (Network)
+Tất cả các container giao tiếp với nhau trong một mạng cầu riêng biệt:
+* **Tên mạng**: `microservice-network`
 * **Driver**: `bridge`
-* **Purpose**: Allows microservices to reference infrastructure containers using their container names (e.g. `mysql:3306`, `rabbitmq:5672`, `eureka-server:8761`) instead of host IP addresses.
+* **Mục đích**: Cho phép các microservice gọi trực tiếp các dịch vụ hạ tầng thông qua tên service của chúng (ví dụ: `mysql:3306`, `rabbitmq:5672`, `eureka-server:8761`) thay vì phải phân giải qua địa chỉ IP của máy chủ.
 
-### 2.3 Volume Mounts
-To prevent loss of user data during container recycles, two named volumes are declared:
-1. `mysql_data`: Mounts `/var/lib/mysql` inside `microservice-mysql` to persist all SQL tables and records.
-2. `media_data`: Mounts `/app/uploads` in `microservice-media` to persist user-uploaded product images and avatars.
+### 2.3 Phân vùng lưu trữ dữ liệu (Volumes)
+Để dữ liệu không bị mất khi khởi động lại hoặc xóa container, hai volume được thiết lập:
+1. `mysql_data`: Gắn với đường dẫn `/var/lib/mysql` trong container `microservice-mysql` để bảo vệ dữ liệu các bảng cơ sở dữ liệu.
+2. `media_data`: Gắn với `/app/uploads` trong container `microservice-media` để bảo vệ các tệp ảnh sản phẩm và avatar được tải lên.
 
 ---
 
-## 3. Kubernetes Status
+## 3. Trạng thái Kubernetes (K8s)
 
 > [!NOTE]
-> Currently, there are no Kubernetes configuration manifests (K8s) included in this repository. Deployment is organized exclusively using Docker Compose.
+> Hiện tại, dự án chưa cấu hình các tệp tin manifest để chạy trên cụm Kubernetes. Việc triển khai được thực hiện duy nhất bằng công cụ Docker Compose.
 
 ---
 
-## 4. Environment Configuration & Profiles
+## 4. Phân tách cấu hình bằng Profile
 
-The system uses **Spring Boot Profiles** to distinguish between local (development) and containerized (docker) configurations:
+Hệ thống cấu hình sẵn **Spring Boot Profiles** để phân biệt môi trường chạy độc lập cục bộ và môi trường chạy đóng gói container:
 
 ### Docker Profile
-When launching containers via Docker Compose, the environment variable `SPRING_PROFILES_ACTIVE=docker` is injected. This activates `application-docker.properties` in each microservice, changing local targets:
-* **Local Mode**: Databases resolve to `jdbc:mysql://localhost:3306/...` and RabbitMQ to `localhost`.
-* **Docker Mode**: Databases resolve to `jdbc:mysql://mysql:3306/...` and RabbitMQ to `rabbitmq`.
+Khi chạy qua Docker Compose, biến môi trường `SPRING_PROFILES_ACTIVE=docker` được truyền vào. Điều này kích hoạt file `application-docker.properties` của các microservice để chuyển hướng kết nối:
+* **Chạy Local thông thường**: Dịch vụ kết nối database qua `jdbc:mysql://localhost:3306/...` và RabbitMQ qua `localhost`.
+* **Chạy qua Docker**: Dịch vụ kết nối database qua `jdbc:mysql://mysql:3306/...` và RabbitMQ qua `rabbitmq`.
 
 ---
 
-## 5. Build and Execution Guide
+## 5. Hướng dẫn biên dịch và khởi chạy
 
-### Prerequisites
-* Java 21 Development Kit (JDK) installed.
-* Apache Maven installed.
-* Docker & Docker Desktop running.
-* Node.js (for frontend execution).
+### Yêu cầu cài đặt sẵn
+* Bộ công cụ Java 21 JDK.
+* Phần mềm đóng gói Apache Maven.
+* Ứng dụng Docker & Docker Desktop.
+* Node.js (để khởi chạy ứng dụng frontend).
 
-### Step-by-Step Run Process
+### Quy trình khởi chạy chi tiết
 
-#### Step 1: Compile the Backend
-Navigate to the `backend/` directory and compile all Spring Boot modules into executable JARs:
+#### Bước 1: Biên dịch mã nguồn Backend
+Di chuyển vào thư mục `backend/` và đóng gói các module Spring Boot thành tệp JAR:
 ```bash
 cd backend
 mvn clean package -DskipTests
 ```
-This generates the required `.jar` files inside the `target/` folder of each microservice module.
+Lệnh này sẽ dọn dẹp các bản build cũ và tạo ra file `.jar` mới trong thư mục `target/` của từng module dịch vụ.
 
-#### Step 2: Launch the Infrastructure and Services
-Run Docker Compose in detached mode to download images, compile contexts, and spin up the containers:
+#### Bước 2: Khởi động các container dịch vụ
+Chạy lệnh Docker Compose để build ngữ cảnh và khởi chạy các container chạy ngầm:
 ```bash
 docker compose up --build -d
 ```
-Verify that all containers are healthy:
+Kiểm tra xem toàn bộ các container đã hoạt động bình thường chưa:
 ```bash
 docker compose ps
 ```
 
-#### Step 3: Run the React Frontend
-Navigate to the `frontend/` directory, install packages, and launch the Vite development server:
+#### Bước 3: Khởi chạy ứng dụng React Frontend
+Di chuyển sang thư mục `frontend/`, tải về các gói thư viện NPM và khởi động máy chủ thử nghiệm Vite:
 ```bash
 cd ../frontend
 npm install
 npm run dev
 ```
-By default, the frontend will be served at `http://localhost:5173`.
-All frontend API requests will route to `http://localhost:8088` (the API Gateway).
-The Eureka registry control dashboard can be viewed at `http://localhost:8761`.
-The RabbitMQ broker dashboard is available at `http://localhost:15672` (guest / guest credentials).
+Mặc định ứng dụng frontend sẽ được phân phối tại địa chỉ `http://localhost:5173`.
+Toàn bộ các API từ frontend sẽ tự động gọi qua cổng Gateway biên `http://localhost:8088`.
+Giao diện quản lý danh bạ Eureka có thể truy cập tại `http://localhost:8761`.
+Bảng điều khiển RabbitMQ hoạt động tại `http://localhost:15672` (tài khoản mặc định: `guest` / `guest`).

@@ -1,70 +1,70 @@
-# 01. Project Overview
+# 01. Tổng quan dự án
 
-## 1. Introduction & System Purpose
+## 1. Giới thiệu & Mục tiêu hệ thống
 
-The **ĐồCũ** (meaning "Secondhand Goods" in Vietnamese) platform is a modern, responsive Consumer-to-Consumer (C2C) microservices-based secondhand e-commerce application. The platform provides a digital marketplace tailored for local communities, allowing users to buy, sell, and exchange pre-owned goods (electronics, fashion, furniture, etc.) in a sustainable manner.
+Hệ thống **ĐồCũ** là một ứng dụng thương mại điện tử trao đổi đồ cũ theo mô hình C2C (Consumer-to-Consumer) hiện đại, được xây dựng dựa trên kiến trúc microservices và thiết kế giao diện responsive. Nền tảng này cung cấp một chợ trực tuyến tiện lợi cho cộng đồng địa phương, cho phép người dùng đăng tin bán, tìm kiếm, trao đổi các mặt hàng đã qua sử dụng (thiết bị điện tử, thời trang, nội thất...) một cách bền vững.
 
-By decomposing functionalities into specialized microservices, the system achieves high scaling potential, separate databases per service, dynamic product search capabilities, real-time communication, and secure online transaction capabilities.
-
----
-
-## 2. Business Domain
-
-The project resides in the **C2C E-commerce and Secondhand Trading** business domain. Key business drivers and characteristics of this domain include:
-
-* **Local/Geographic Context**: Product listings include location metadata (e.g. city, district, GPS coordinates) to facilitate physical inspections and offline exchanges.
-* **Trust & Reputation**: A peer review system establishes user trust. Buyers can rate and comment on sellers after transactions, and sellers can reply to reviews.
-* **Negotiation & Real-Time Engagement**: Used goods marketplaces rely heavily on chat negotiations. Integrated messaging bridges the communication gap between buyers and sellers directly inside the app.
-* **Ad-hoc Attributes**: Unlike standardized e-commerce (e.g. Amazon), secondhand items vary wildly. The system implements dynamic attributes in text/JSON format to accommodate arbitrary specifications (e.g. battery health, wear-and-tear descriptions).
+Bằng cách phân rã các tính năng nghiệp vụ thành các microservice chuyên biệt, hệ thống đạt được khả năng mở rộng cao, cô lập cơ sở dữ liệu cho từng dịch vụ, cung cấp bộ lọc tìm kiếm sản phẩm động, hệ thống chat thời gian thực và khả năng thực hiện các giao dịch trực tuyến an toàn.
 
 ---
 
-## 3. Key Platform Features
+## 2. Lĩnh vực nghiệp vụ (Business Domain)
 
-The system offers a comprehensive suite of features split across its microservices architecture:
+Dự án nằm trong lĩnh vực **Thương mại điện tử C2C và Trao đổi đồ cũ**. Các đặc điểm và yếu tố thúc đẩy nghiệp vụ chính bao gồm:
 
-1. **User Authentication & Profiles**:
-   * Secure registration, login, and logout.
-   * Dual-token authentication (JWT access token + Redis-backed Refresh Token).
-   * Interactive profile management, including editing name, phone, and uploading custom avatars.
-2. **Product Catalog & Search**:
-   * Browse products by dynamic categories.
-   * Rich search filters (keyword, category, location, min/max price, wear-and-tear condition).
-   * "Bumping" mechanism allowing sellers to bump their products to the top of search listings.
-   * Favorite/saved list to track interesting posts.
-3. **Admin Dashboard**:
-   * Moderation workflows (admin approval/disapproval of listings).
-   * User management and category creation/updates.
-4. **Negotiation Chat**:
-   * Dynamic chat room creation tied to specific products.
-   * Multimedia messages (text, custom image uploads, Google Maps location sharing).
-   * Read/unread tracking and real-time counter indicators.
-5. **Real-time Notifications**:
-   * Sub-system to capture events (e.g. new chat message) and notify the receiver.
-   * Persistent database records of notifications with read status.
-6. **Seller Review System**:
-   * Submitting seller reviews (1-5 star ratings, comments, and file attachments).
-   * Seller response/reply capabilities to counter or accept feedback.
-   * Automated calculations for seller average scores.
-7. **Online Payments**:
-   * Integration with **VNPay**, one of Vietnam's leading payment gateways.
-   * Secure URL generation for redirection and HMAC-SHA512 checksum callbacks.
+* **Bối cảnh địa lý/địa phương**: Danh sách sản phẩm chứa thông tin vị trí (tỉnh/thành phố, quận/huyện, tọa độ GPS) để người mua dễ dàng xem hàng trực tiếp và giao dịch trực tiếp.
+* **Độ tin cậy & Uy tín**: Hệ thống đánh giá ngang hàng (peer review) giúp thiết lập niềm tin. Người mua có thể đánh giá và bình luận về người bán sau khi giao dịch, và người bán có thể phản hồi lại.
+* **Thương lượng & Tương tác thời gian thực**: Thị trường đồ cũ phụ thuộc lớn vào việc thương lượng giá cả. Hệ thống tích hợp tính năng chat giúp kết nối trực tiếp người mua và người bán ngay trên ứng dụng.
+* **Thuộc tính sản phẩm động (Ad-hoc Attributes)**: Không giống hàng mới có thông số chuẩn, đồ cũ rất đa dạng. Hệ thống triển khai các thuộc tính động dưới dạng văn bản/JSON để lưu trữ thông số linh hoạt (ví dụ: tình trạng pin, vết xước...).
 
 ---
 
-## 4. User Roles
+## 3. Các tính năng chính của nền tảng
 
-The platform defines three main user roles:
+Hệ thống cung cấp một bộ tính năng toàn diện được phân chia qua các microservice:
 
-| Role | Access Level | Key Capabilities |
+1. **Quản lý tài khoản & Xác thực**:
+   * Đăng ký, đăng nhập và đăng xuất an toàn.
+   * Cơ chế xác thực kép (Access Token JWT thời hạn ngắn + Refresh Token lưu ở Redis thời hạn dài).
+   * Trang quản lý thông tin cá nhân (đổi tên, số điện thoại, tải ảnh đại diện).
+2. **Danh mục sản phẩm & Tìm kiếm**:
+   * Duyệt sản phẩm theo các danh mục động.
+   * Bộ lọc tìm kiếm chi tiết (từ khóa, danh mục, vị trí, khoảng giá, tình trạng hao mòn).
+   * Tính năng "Đẩy tin" (bump) giúp người bán đưa tin đăng lên đầu trang tìm kiếm.
+   * Danh sách tin đăng đã lưu (yêu thích) để theo dõi sản phẩm quan tâm.
+3. **Trang quản trị (Admin Dashboard)**:
+   * Quy trình kiểm duyệt tin đăng (admin duyệt/từ chối duyệt sản phẩm).
+   * Quản lý người dùng và cập nhật/tạo mới danh mục.
+4. **Chat thương lượng**:
+   * Tự động tạo phòng chat liên kết với từng sản phẩm cụ thể.
+   * Gửi tin nhắn đa phương tiện (văn bản, tải ảnh trực tiếp, chia sẻ vị trí qua liên kết Google Maps).
+   * Trạng thái đã đọc/chưa đọc và bộ đếm tin nhắn chưa đọc thời gian thực.
+5. **Thông báo thời gian thực**:
+   * Hệ thống con nắm bắt các sự kiện (ví dụ: tin nhắn mới) và gửi cảnh báo tới người nhận.
+   * Lưu trữ lịch sử thông báo trong database với trạng thái đã đọc.
+6. **Hệ thống đánh giá người bán**:
+   * Gửi đánh giá cho người bán (1-5 sao, nhận xét và ảnh đính kèm).
+   * Người bán có thể phản hồi lại các đánh giá từ khách hàng.
+   * Tự động tính điểm đánh giá trung bình (average score) cho người bán.
+7. **Thanh toán trực tuyến**:
+   * Tích hợp cổng thanh toán **VNPay** (cổng thanh toán phổ biến tại Việt Nam).
+   * Tạo URL thanh toán an toàn và kiểm tra chữ ký callback bằng thuật toán mã hóa HMAC-SHA512.
+
+---
+
+## 4. Các vai trò người dùng (User Roles)
+
+Hệ thống định nghĩa ba vai trò người dùng chính:
+
+| Vai trò | Mức độ truy cập | Các tính năng chính |
 | --- | --- | --- |
-| **GUEST** (Anonymous) | Public | Browse landing page, search and filter listings, view product details, check seller profiles and reviews. |
-| **USER** (Authenticated) | Registered User | Log in/out, edit profile settings, post new items for sale, bump active posts, save favorite items, open chat rooms, exchange messages (text, image, location), review sellers, write comments, create mock orders, and simulate VNPay payments. |
-| **ADMIN** | Platform Administrator | All capabilities of a `USER`, plus access to the Admin Panel (`/admin`) to list, approve, or delete products, manage users, and manage categories. |
+| **GUEST** (Khách ẩn danh) | Công khai | Xem trang chủ, tìm kiếm và lọc sản phẩm, xem chi tiết sản phẩm, xem hồ sơ người bán và đánh giá của họ. |
+| **USER** (Thành viên) | Đã đăng nhập | Đăng nhập/xuất, chỉnh sửa trang cá nhân, đăng tin bán đồ cũ, đẩy tin đang hoạt động, lưu tin yêu thích, tạo phòng chat, gửi tin nhắn (chữ, ảnh, vị trí), đánh giá người bán khác, tạo đơn hàng mô phỏng và chạy luồng thanh toán qua VNPay. |
+| **ADMIN** (Quản trị viên) | Toàn quyền quản trị | Có toàn bộ quyền của `USER`, đồng thời truy cập trang Admin (`/admin`) để duyệt/xóa tin đăng, quản lý người dùng và danh mục sản phẩm. |
 
 ---
 
-## 5. High-Level Data Flow
+## 5. Luồng dữ liệu mức cao (High-Level Data Flow)
 
 ```mermaid
 graph TD
@@ -90,7 +90,7 @@ graph TD
     Services -- Async Messaging --> MQ
 ```
 
-1. **Request Ingestion**: The React frontend routes all API calls to the central **API Gateway** (port `8088`).
-2. **Security Decoupling**: The API Gateway intercepts the request, validates the JWT, decodes user identity, injects header details (`X-User-Id`, `X-User-Role`), and forwards it to downstream services.
-3. **Synchronous Call Resolution**: When services need data from each other (e.g. `order-service` requesting buyer details), they perform internal HTTP REST queries using a load-balanced `RestTemplate` mapped via **Eureka Server**.
-4. **Asynchronous Notification Propagation**: Non-blocking workflows (e.g. dispatching notification alerts or post-order tasks) publish messages to **RabbitMQ**, which are picked up by listeners on respective services for background processing.
+1. **Nhận yêu cầu**: Ứng dụng React Frontend gửi tất cả các yêu cầu API đến điểm truy cập tập trung **API Gateway** (port `8088`).
+2. **Xác thực phi tập trung**: API Gateway chặn yêu cầu, xác thực token JWT, giải mã thông tin người dùng, thêm các trường tiêu đề (`X-User-Id`, `X-User-Role`) và chuyển tiếp xuống các dịch vụ nội bộ.
+3. **Truy vấn đồng bộ**: Khi các dịch vụ cần dữ liệu trực tiếp của nhau (ví dụ: `order-service` cần kiểm tra thông tin người mua), chúng thực hiện cuộc gọi REST qua `RestTemplate` được tải động từ **Eureka Server**.
+4. **Lan truyền sự kiện bất đồng bộ**: Các quy trình không chặn (ví dụ: bắn thông báo hoặc xử lý sau khi tạo đơn hàng) được đẩy dưới dạng tin nhắn qua **RabbitMQ**, các Listener của dịch vụ liên quan sẽ nhận và xử lý ngầm.

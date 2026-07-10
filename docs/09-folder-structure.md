@@ -1,18 +1,18 @@
-# 09. Folder Structure
+# 09. Cấu trúc thư mục
 
-This document provides a directory tree mapping of the **ĐồCũ** repository, explaining the layout of the frontend, gateway, and all backend microservices.
+Tài liệu này cung cấp sơ đồ thư mục toàn bộ dự án **ĐồCũ**, giải thích chi tiết mục đích và nhiệm vụ của từng thư mục trong frontend, gateway và các microservices backend.
 
 ---
 
-## 1. Repository Directory Tree
+## 1. Sơ đồ cây thư mục dự án
 
 ```
 ecommerce-microservices/
 │
-├── .codegraph/                  # CodeGraph configuration & indexed symbol maps
-├── .github/                     # GitHub Actions CI/CD workflows
+├── .codegraph/                  # Cấu hình và dữ liệu chỉ mục mã nguồn CodeGraph
+├── .github/                     # Các luồng tự động hóa CI/CD của GitHub Actions
 │
-├── docs/                        # Project Technical Documentation
+├── docs/                        # Tài liệu hướng dẫn kỹ thuật của hệ thống
 │   ├── 01-project-overview.md
 │   ├── 02-system-architecture.md
 │   ├── 03-microservices.md
@@ -23,44 +23,44 @@ ecommerce-microservices/
 │   ├── 08-deployment.md
 │   └── 09-folder-structure.md
 │
-├── frontend/                    # Vite + React + Tailwind CSS SPA
-│   ├── public/                  # Static public assets
-│   ├── src/                     # React source files
-│   │   ├── assets/              # Design styles and custom animations
-│   │   ├── components/          # Reusable UI widgets
-│   │   ├── contexts/            # Global state context handlers
-│   │   ├── pages/               # Application page screens
-│   │   └── services/            # Axios API configuration
-│   │   ├── App.css              # Root application styling
-│   │   ├── App.jsx              # Routing and primary layout
-│   │   ├── index.css            # Main tailwind and custom design system rules
-│   │   └── main.jsx             # React DOM entry point
-│   ├── package.json             # NPM dependencies & run commands
-│   ├── tailwind.config.js       # Tailwind CSS variables and theme properties
-│   └── vite.config.js           # Vite development server settings
+├── frontend/                    # Mã nguồn ứng dụng giao diện React + Vite + Tailwind
+│   ├── public/                  # Các tài nguyên tĩnh công khai (ảnh, biểu tượng)
+│   ├── src/                     # Mã nguồn Javascript/React chính
+│   │   ├── assets/              # Định nghĩa phong cách thiết kế, chuyển động CSS
+│   │   ├── components/          # Các thành phần giao diện dùng chung (Navbar, Footer...)
+│   │   ├── contexts/            # Quản lý trạng thái đăng nhập toàn cục (AuthContext)
+│   │   ├── pages/               # Các trang giao diện chính của ứng dụng
+│   │   └── services/            # Cấu hình máy khách Axios gọi API
+│   │   ├── App.css              # Phong cách CSS cấp cơ sở của App
+│   │   ├── App.jsx              # Khai báo định tuyến trang và khung bố cục chính
+│   │   ├── index.css            # File nạp cấu hình Tailwind và tùy biến thiết kế
+│   │   └── main.jsx             # Điểm khởi tạo và nạp React DOM vào index.html
+│   ├── package.json             # Danh sách thư viện phụ thuộc và lệnh chạy npm
+│   ├── tailwind.config.js       # Khai báo biến chủ đề và cấu hình Tailwind CSS
+│   └── vite.config.js           # File cấu hình máy chủ chạy thử nghiệm Vite
 │
-└── backend/                     # Spring Boot / Maven Multi-Module Microservices
-    ├── pom.xml                  # Parent Maven Project Object Model file
-    ├── docker-compose.yml       # Local Docker container orchestration manifest
-    ├── init-db.sql              # MySQL initialization script for database schemas
+└── backend/                     # Mã nguồn microservices Spring Boot quản lý bằng Maven
+    ├── pom.xml                  # File Maven cấu hình chung cho toàn bộ dự án
+    ├── docker-compose.yml       # File điều phối khởi chạy hệ thống container cục bộ
+    ├── init-db.sql              # File tạo sẵn các cơ sở dữ liệu trên MySQL
     │
-    ├── api-gateway/             # Gateway proxy service (Port 8088)
-    ├── eureka-server/           # Service discovery registry (Port 8761)
-    ├── user-service/            # Authentication & user profiles (Port 8085)
-    ├── product-service/         # Product catalog and favorites (Port 8081)
-    ├── order-service/           # Transaction processing service (Port 8082)
-    ├── chat-service/            # Direct messaging chat logs (Port 8086)
-    ├── media-service/           # File manager (Port 8083)
-    ├── notification-service/    # Asynchronous alerts manager (Port 8087)
-    ├── review-service/          # Ratings & peer reviews (Port 8089)
-    └── payment-service/         # VNPay API transaction gateway (Port 8090)
+    ├── api-gateway/             # Dịch vụ cổng kết nối API Gateway biên (Port 8088)
+    ├── eureka-server/           # Dịch vụ quản lý danh bạ khám phá Eureka (Port 8761)
+    ├── user-service/            # Dịch vụ quản lý người dùng & đăng nhập (Port 8085)
+    ├── product-service/         # Dịch vụ quản lý sản phẩm đăng bán (Port 8081)
+    ├── order-service/           # Dịch vụ đặt đơn hàng giao dịch (Port 8082)
+    ├── chat-service/            # Dịch vụ nhắn tin trao đổi trực tiếp (Port 8086)
+    ├── media-service/           # Dịch vụ tải lên và lưu trữ ảnh (Port 8083)
+    ├── notification-service/    # Dịch vụ quản lý gửi thông báo đẩy (Port 8087)
+    ├── review-service/          # Dịch vụ chấm điểm uy tín & nhận xét (Port 8089)
+    └── payment-service/         # Dịch vụ tích hợp cổng thanh toán VNPay (Port 8090)
 ```
 
 ---
 
-## 2. Microservice Module Substructure
+## 2. Cấu trúc thư mục của một Microservice Backend
 
-Every backend microservice in the `backend/` directory follows the standard Maven folder layout:
+Mỗi dịch vụ microservice Java trong thư mục `backend/` tuân thủ đúng cấu trúc chuẩn của dự án Maven:
 
 ```
 [service-module]/
@@ -68,53 +68,53 @@ Every backend microservice in the `backend/` directory follows the standard Mave
 ├── src/
 │   ├── main/
 │   │   ├── java/com/example/[service_name]/
-│   │   │   ├── config/          # Configurations (WebSocket, Security, RabbitMQ)
-│   │   │   ├── controller/      # REST API endpoints & mapping controllers
-│   │   │   ├── dto/             # Data Transfer Objects (Requests & Responses)
-│   │   │   ├── entity/          # JPA database Entity files mapping to MySQL tables
-│   │   │   ├── exception/       # Custom Exception definitions & Global Handler
-│   │   │   ├── listener/        # AMQP RabbitMQ message consumers (if applicable)
-│   │   │   ├── repository/      # Spring Data JPA Repository database interfaces
-│   │   │   ├── security/        # JWT utilities & filters (if applicable)
-│   │   │   └── service/         # Business logic implementation classes
-│   │   │   └── [Application.java] # Main Spring Boot executable class
+│   │   │   ├── config/          # Khai báo cấu hình hệ thống (WebSockets, Security, RabbitMQ)
+│   │   │   ├── controller/      # Khai báo các endpoints nhận yêu cầu API REST
+│   │   │   ├── dto/             # Các lớp trung chuyển dữ liệu (Request & Response DTOs)
+│   │   │   ├── entity/          # Các thực thể JPA ánh xạ trực tiếp xuống bảng MySQL
+│   │   │   ├── exception/       # Định nghĩa ngoại lệ và lớp bắt lỗi tập trung (Global Handler)
+│   │   │   ├── listener/        # Lớp thu thập và xử lý các sự kiện hàng đợi RabbitMQ
+│   │   │   ├── repository/      # Giao diện Spring Data JPA truy vấn cơ sở dữ liệu
+│   │   │   ├── security/        # Bộ lọc xác thực và cấu hình phân tích token JWT
+│   │   │   └── service/         # Các lớp chứa mã nguồn xử lý logic nghiệp vụ chính
+│   │   │   └── [Application.java] # File chạy chính khởi động dịch vụ Spring Boot
 │   │   │
 │   │   └── resources/
-│   │       ├── application.properties         # Local environment properties
-│   │       └── application-docker.properties  # Overrides active under container profile
+│   │       ├── application.properties         # File cấu hình cấu hình chạy local
+│   │       └── application-docker.properties  # File cấu hình ghi đè khi chạy trong Docker
 │   │
-│   └── test/                    # JUnit and Mockito test suites
+│   └── test/                    # Các bộ mã chạy thử nghiệm tự động (Unit/Integration Tests)
 │
-├── Dockerfile                   # Container build blueprint
-└── pom.xml                      # Maven module configurations & dependencies
+├── Dockerfile                   # Hướng dẫn đóng gói ảnh Docker cho dịch vụ
+└── pom.xml                      # Khai báo thư viện và cấu hình đóng gói Maven của module
 ```
 
 ---
 
-## 3. Frontend Source Substructure
+## 3. Cấu trúc thư mục nguồn của Frontend
 
-The `frontend/src/` directory contains folders grouped by architectural role:
+Các thư mục con trong `frontend/src/` được chia theo vai trò cấu trúc của React:
 
-* **`components/`**: Houses static and stateless structural components reused across pages:
-  * `Navbar.jsx`: Global header navigation.
-  * `BottomNav.jsx`: Mobile navigation menu.
-  * `Footer.jsx`: The page footer.
-  * `CategoryCarousel.jsx`: Horizontal scrolling categories list.
-  * `HeroBanner.jsx`: Welcome header on main screen.
-  * `ProductList.jsx`: Product grid container.
-  * `AdminLayout.jsx`: Navigation layout for administrators.
-* **`contexts/`**: Contains React Context Providers.
-  * `AuthContext.jsx`: Restores session states from `localStorage` and decodes user properties (email, role, ID) from the JWT.
-* **`pages/`**: Primary page routers containing full screen structures.
-  * `Home.jsx` / `Search.jsx`: Landing page and multi-faceted product filtering catalog.
-  * `ProductDetail.jsx`: Extended descriptions, product specs, reviews, and transaction actions.
-  * `Chat.jsx`: Visual chat box for buyers and sellers (polls backend dynamically).
-  * `ManagePosts.jsx` / `PostProduct.jsx`: Creation form and listing managers for seller inventory.
-  * `SavedPosts.jsx`: Saved bookmarks list.
-  * `SellerProfile.jsx`: Seller details and reputation dashboard.
-  * `UserSettings.jsx`: Profile forms and avatar photo upload.
-  * `Login.jsx` / `Register.jsx`: Authorization access panels.
-  * `AdminUsers.jsx` / `AdminCategories.jsx` / `AdminProducts.jsx`: Admin moderation pages.
-* **`services/`**: Interceptors and API setups.
-  * `api.js`: Instantiates Axios with `baseURL: http://localhost:8088`. Configures a request interceptor to dynamically inject the authorization token: `Authorization: Bearer <jwt_token>`.
-* **`index.css`**: Core design rules declaring CSS utility variables for the application (custom fonts, responsive grid grids, active transitions).
+* **`components/`**: Chứa các component giao diện tĩnh hoặc phi trạng thái được dùng chung ở nhiều trang:
+  * `Navbar.jsx`: Thanh điều hướng đầu trang chứa thanh tìm kiếm và menu thành viên.
+  * `BottomNav.jsx`: Thanh điều hướng chân trang cho thiết bị di động.
+  * `Footer.jsx`: Chân trang hiển thị thông tin bản quyền và liên kết.
+  * `CategoryCarousel.jsx`: Băng chuyền hiển thị danh sách danh mục sản phẩm nằm ngang.
+  * `HeroBanner.jsx`: Banner chào mừng lớn ở trang chủ.
+  * `ProductList.jsx`: Khung lưới hiển thị danh sách các thẻ sản phẩm.
+  * `AdminLayout.jsx`: Thanh điều hướng bố cục dành riêng cho admin.
+* **`contexts/`**: Quản lý các Context toàn cục của React.
+  * `AuthContext.jsx`: Giải mã thông tin email, role, userId từ token JWT trong `localStorage` để thiết lập trạng thái phiên đăng nhập của người dùng.
+* **`pages/`**: Các trang chức năng chính của ứng dụng.
+  * `Home.jsx` / `Search.jsx`: Trang chủ và trang tìm kiếm, lọc sản phẩm đồ cũ chi tiết.
+  * `ProductDetail.jsx`: Hiển thị chi tiết thông số sản phẩm, đánh giá và nút trò chuyện.
+  * `Chat.jsx`: Hộp trò chuyện trực tiếp (gọi API lấy tin nhắn liên tục).
+  * `ManagePosts.jsx` / `PostProduct.jsx`: Quản lý các tin đã đăng và form đăng bán sản phẩm mới.
+  * `SavedPosts.jsx`: Hiển thị danh sách các tin đăng mà người dùng bấm lưu.
+  * `SellerProfile.jsx`: Xem trang hồ sơ cá nhân và lịch sử nhận xét của người bán khác.
+  * `UserSettings.jsx`: Form chỉnh sửa thông tin tài khoản và đổi ảnh đại diện.
+  * `Login.jsx` / `Register.jsx`: Biểu mẫu đăng nhập và tạo tài khoản mới.
+  * `AdminUsers.jsx` / `AdminCategories.jsx` / `AdminProducts.jsx`: Các bảng quản lý dữ liệu dành cho admin.
+* **`services/`**: Cấu hình liên lạc API.
+  * `api.js`: Khởi tạo đối tượng Axios gọi tới cổng Gateway biên `http://localhost:8088`. Cấu hình bộ lọc Interceptor tự động thêm header `Authorization: Bearer <jwt_token>` nếu có token lưu trong máy.
+* **`index.css`**: Định nghĩa bảng màu thiết kế, kiểu chữ hiển thị và các lớp hiệu ứng chuyển động tùy biến cho toàn hệ thống.

@@ -1,135 +1,135 @@
-# 05. Workflow Documentation
+# 05. Tài liệu quy trình nghiệp vụ (Workflow)
 
-This document traces the end-to-end execution flows for critical operations in the **ĐồCũ** secondhand e-commerce platform.
+Tài liệu này theo dõi các luồng xử lý đầu cuối (end-to-end) của các nghiệp vụ quan trọng trong nền tảng chợ đồ cũ **ĐồCũ**.
 
 ---
 
-## 1. User Registration & Login
+## 1. Luồng đăng ký & đăng nhập
 
-### Description
-Creates a new user profile or verifies credentials to initiate an authenticated session.
+### Mô tả
+Tạo tài khoản mới hoặc xác thực thông tin đăng nhập của thành viên để bắt đầu một phiên làm việc có bảo mật.
 
-### Step-by-Step Process
-1. The user inputs registration/login credentials in the frontend.
-2. The request is sent to `api-gateway` which forwards it bypass-filtered to `user-service`.
-3. For registration:
-   * `user-service` validates email uniqueness.
-   * Hashes the password using BCrypt.
-   * Saves the `User` record to `user_db`.
-4. For login:
-   * `user-service` retrieves the user by email and validates the password.
-5. Generates a JWT (24-hour expiration) and a Refresh Token (7-day expiration).
-6. Saves the Refresh Token into Redis (`RT:<email>`).
-7. Returns both tokens to the frontend, which stores the JWT in `localStorage` for future requests.
+### Các bước xử lý
+1. Người dùng nhập thông tin đăng ký/đăng nhập trên giao diện frontend.
+2. Yêu cầu được gửi đến `api-gateway`. Gateway kiểm tra và chuyển tiếp không xác thực đến `user-service`.
+3. Đối với luồng đăng ký:
+   * `user-service` kiểm tra tính duy nhất của email trong database.
+   * Mã hóa mật khẩu bằng thư viện BCrypt.
+   * Lưu bản ghi `User` mới vào cơ sở dữ liệu `user_db`.
+4. Đối với luồng đăng nhập:
+   * `user-service` tìm người dùng theo email và thực hiện so khớp mật khẩu mã hóa.
+5. Cấp phát cặp token: Access Token (JWT hết hạn sau 24 giờ) và Refresh Token (hết hạn sau 7 ngày).
+6. Lưu Refresh Token vào bộ nhớ đệm Redis với khóa (`RT:<email>`).
+7. Trả lại thông tin hai token về cho Client. Giao diện frontend lưu JWT vào `localStorage` để đính kèm cho các request tiếp theo.
 
-### Sequence Diagram
+### Sơ đồ tuần tự (Sequence Diagram)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as User Client
+    actor User as Client (Người dùng)
     participant GW as API Gateway
     participant US as User Service
     participant Redis as Redis Cache
     database DB as MySQL (user_db)
 
     User->>GW: POST /auth/login
-    GW->>US: Forward POST /auth/login
-    US->>DB: Query User by Email
-    DB-->>US: Return User Entity (Hashed Password)
-    US->>US: Validate Password (BCrypt check)
-    US->>Redis: Store Refresh Token (RT:email, 7 days TTL)
-    US-->>GW: Return Access Token (JWT) & Refresh Token
-    GW-->>User: Return Tokens (Save to LocalStorage)
+    GW->>US: Chuyển tiếp POST /auth/login
+    US->>DB: Truy vấn User theo Email
+    DB-->>US: Trả về thông tin User (Mật khẩu mã hóa)
+    US->>US: So khớp mật khẩu (BCrypt check)
+    US->>Redis: Lưu Refresh Token (RT:email, 7 ngày TTL)
+    US-->>GW: Trả về Access Token (JWT) & Refresh Token
+    GW-->>User: Trả về Token (Lưu vào LocalStorage)
 ```
 
 ---
 
-## 2. Product Posting & Admin Approval
+## 2. Luồng đăng tin & Phê duyệt sản phẩm
 
-### Description
-A seller lists a secondhand item, which must pass moderation by an administrator before appearing publicly.
+### Mô tả
+Người bán đăng sản phẩm cũ lên hệ thống, tin đăng này có thể cần đi qua bộ lọc kiểm duyệt của Quản trị viên trước khi hiển thị công khai.
 
-### Step-by-Step Process
-1. The seller uploads images. The images are stored via `media-service`, which returns relative URLs.
-2. The seller submits the product creation request. The Gateway attaches `X-User-Id` to identify the seller.
-3. `product-service` saves the product with `isApproved = true` (development default, or `false` if strict approval is turned on) and status `"AVAILABLE"`.
-4. An Administrator opens the Admin Panel and calls `PUT /admin/products/{id}/approve?approved=true`.
-5. `product-service` updates `is_approved = true` in `product_db`, making the item public.
+### Các bước xử lý
+1. Người bán chọn tải lên hình ảnh sản phẩm. Các ảnh này được gửi đến `media-service` để lưu trữ và nhận lại các đường dẫn tương đối.
+2. Người bán điền thông tin chi tiết sản phẩm và gửi request. Gateway tự động đính kèm header `X-User-Id` để định danh người bán.
+3. Dịch vụ `product-service` lưu trữ thông tin sản phẩm vào database `product_db` với trạng thái mặc định ban đầu là `AVAILABLE` và cờ phê duyệt `isApproved = true` (được cấu hình mặc định tự động duyệt trong môi trường thử nghiệm, hoặc `false` nếu yêu cầu duyệt nghiêm ngặt).
+4. Quản trị viên có thể vào trang admin và phê duyệt sản phẩm thủ công bằng cách gọi API `PUT /admin/products/{id}/approve?approved=true`.
+5. Dịch vụ `product-service` cập nhật cờ `is_approved = true` giúp sản phẩm xuất hiện công khai trên giao diện tìm kiếm.
 
-### Sequence Diagram
+### Sơ đồ tuần tự (Sequence Diagram)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Seller as Seller Client
+    actor Seller as Client (Người bán)
     participant GW as API Gateway
     participant MS as Media Service
     participant PS as Product Service
     database DB as MySQL (product_db)
-    actor Admin as Admin Client
+    actor Admin as Client (Quản trị viên)
 
-    %% Image Upload
-    Seller->>GW: POST /media/upload (Form Data)
-    GW->>MS: Route to Media Service
-    MS->>MS: Save images locally to ./uploads
-    MS-->>GW: Return relative URLs (/media/images/xxx.png)
-    GW-->>Seller: Image URL list
+    %% Tải ảnh lên
+    Seller->>GW: POST /media/upload (Multipart Form Data)
+    GW->>MS: Chuyển tiếp đến Media Service
+    MS->>MS: Lưu ảnh vào thư mục cục bộ ./uploads
+    MS-->>GW: Trả về đường dẫn ảnh tương đối (/media/images/xxx.png)
+    GW-->>Seller: Danh sách link ảnh sản phẩm
 
-    %% Product Creation
-    Seller->>GW: POST /products (Product Details + Image URLs)
-    Note over GW: Validates JWT, injects X-User-Id
-    GW->>PS: Forward with X-User-Id
-    PS->>DB: Save Product (approved=true/false, status=AVAILABLE)
-    DB-->>PS: Return Product Entity
-    PS-->>GW: Return saved Product
-    GW-->>Seller: Product posted successfully
+    %% Đăng sản phẩm
+    Seller->>GW: POST /products (Thông tin sản phẩm + Danh sách ảnh)
+    Note over GW: Xác thực JWT, chèn tiêu đề X-User-Id
+    GW->>PS: Chuyển tiếp kèm X-User-Id
+    PS->>DB: Lưu sản phẩm (approved=true, status=AVAILABLE)
+    DB-->>PS: Trả về thông tin sản phẩm đã lưu
+    PS-->>GW: Phản hồi tạo sản phẩm thành công
+    GW-->>Seller: Báo đăng tin thành công
 
-    %% Admin Moderation
+    %% Duyệt sản phẩm
     Admin->>GW: PUT /admin/products/{id}/approve?approved=true
-    GW->>PS: Forward Admin Request
-    PS->>DB: Update is_approved = true
-    DB-->>PS: Saved
-    PS-->>GW: Success Response
-    GW-->>Admin: Listing approved
+    GW->>PS: Chuyển tiếp yêu cầu phê duyệt
+    PS->>DB: Cập nhật trường is_approved = true
+    DB-->>PS: Đã lưu thay đổi
+    PS-->>GW: Trả kết quả thành công
+    GW-->>Admin: Duyệt tin đăng thành công
 ```
 
 ---
 
-## 3. Product Search & Detail
+## 3. Luồng tìm kiếm & xem chi tiết sản phẩm
 
-### Description
-A visitor searches the catalog with filters and views an item's details, including seller ratings.
+### Mô tả
+Người mua tìm kiếm danh mục sản phẩm theo bộ lọc và nhấp chọn xem chi tiết một tin đăng cụ thể bao gồm cả uy tín của người bán.
 
-### Step-by-Step Process
-1. The user requests a search with parameters (keyword, category, location, min/max price).
-2. The Gateway maps the GET request to `product-service`. Since it is public, the Gateway bypasses security verification.
-3. `product-service` compiles the queries into a JPA Specification and fetches matching records from `product_db`.
-4. When clicking a product, the frontend queries `GET /products/{id}` to display metadata, images, and dynamic attributes.
-5. In parallel, the frontend queries:
-   * `GET /users/{sellerId}` to show seller name and avatar.
-   * `GET /reviews/user/{sellerId}/rating` to fetch the seller's average score.
-   * `GET /reviews/user/{sellerId}` to list comments and reviews.
+### Các bước xử lý
+1. Người mua thực hiện tìm kiếm bằng cách truyền các tham số lọc (từ khóa, danh mục, khoảng giá, vị trí).
+2. API Gateway chuyển tiếp yêu cầu đến `product-service`. Do đây là hành vi xem công khai, Gateway cho phép đi qua không cần token.
+3. Dịch vụ `product-service` tạo truy vấn SQL động dựa trên Specification và trả về danh sách sản phẩm.
+4. Khi người mua nhấp xem chi tiết một sản phẩm, frontend gọi API `GET /products/{id}` để hiển thị ảnh, thông số attributes và mô tả.
+5. Đồng thời, frontend chạy các request song song:
+   * `GET /users/{sellerId}` để hiển thị tên và avatar của người bán.
+   * `GET /reviews/user/{sellerId}/rating` để lấy điểm đánh giá trung bình của người bán.
+   * `GET /reviews/user/{sellerId}` để lấy danh sách các nhận xét từ những người mua trước.
 
 ---
 
-## 4. Order Placement
+## 4. Luồng đặt hàng (Order Placement)
 
-### Description
-Purchasing an item initiates cross-service verification and publishes order confirmation details asynchronously.
+### Mô tả
+Người dùng thực hiện mua sản phẩm, kích hoạt các cuộc gọi đồng bộ để kiểm tra chéo thông tin và bắn sự kiện bất đồng bộ khi hoàn thành.
 
-### Step-by-Step Process
-1. The buyer clicks checkout. The frontend posts order details to `/orders` (passing `userId` and items list).
-2. `order-service` intercept-authenticates the request.
-3. `order-service` calls `user-service` (`GET /users/{userId}`) to verify the buyer exists.
-4. `order-service` loops through each item, calling `product-service` (`GET /products/{productId}`) to fetch product name and verify price.
-5. Calculates total price, saves the order and order items in `order_db` (`orders` and `order_items` tables).
-6. Publishes a string confirmation to RabbitMQ queue `order_queue`.
-7. `user-service` consumes the message from `order_queue` and logs it, representing background actions like sending confirmation emails.
+### Các bước xử lý
+1. Người mua nhấp mua sản phẩm. Frontend gửi yêu cầu đặt hàng đến `/orders` (chứa `userId` và danh sách sản phẩm kèm số lượng).
+2. Dịch vụ `order-service` tiếp nhận yêu cầu và xác thực tài khoản qua JWT.
+3. `order-service` thực hiện cuộc gọi REST đồng bộ tới `user-service` (`GET /users/{userId}`) để đảm bảo tài khoản mua hàng tồn tại và hoạt động hợp lệ.
+4. `order-service` duyệt qua từng sản phẩm trong đơn, gọi đồng bộ tới `product-service` (`GET /products/{productId}`) để lấy tên sản phẩm và kiểm tra giá bán thực tế.
+5. Hệ thống tính toán tổng số tiền, lưu thông tin vào các bảng `orders` và `order_items` trong database `order_db`.
+6. Bắn một tin nhắn văn bản thông báo đặt hàng thành công vào hàng đợi RabbitMQ `order_queue`.
+7. Dịch vụ `user-service` lắng nghe từ hàng đợi, nhận thông báo đặt hàng và mô phỏng tác vụ gửi email thông báo xác nhận đơn hàng trong nền.
 
-### Sequence Diagram
+### Sơ đồ tuần tự (Sequence Diagram)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Buyer as Buyer Client
+    actor Buyer as Client (Người mua)
     participant GW as API Gateway
     participant OS as Order Service
     participant US as User Service
@@ -137,121 +137,121 @@ sequenceDiagram
     database DB as MySQL (order_db)
     participant MQ as RabbitMQ Broker
 
-    Buyer->>GW: POST /orders (userId, items list)
-    GW->>OS: Route to Order Service (checks JWT)
+    Buyer->>GW: POST /orders (userId, danh sách sản phẩm)
+    GW->>OS: Chuyển tiếp tới Order Service (Xác thực JWT)
     
-    OS->>US: GET /users/{userId} (Verify User)
-    US-->>OS: User details (name, email)
+    OS->>US: GET /users/{userId} (Kiểm tra người dùng)
+    US-->>OS: Thông tin người dùng (tên, email)
     
-    loop for each item
-        OS->>PS: GET /products/{productId} (Fetch Details)
-        PS-->>OS: Product details (name, price)
+    loop duyệt từng sản phẩm
+        OS->>PS: GET /products/{productId} (Kiểm tra sản phẩm)
+        PS-->>OS: Chi tiết sản phẩm (tên, giá tiền)
     end
     
-    OS->>OS: Calculate total amount
-    OS->>DB: Save Order & OrderItems
-    DB-->>OS: Saved Order Entity
+    OS->>OS: Tính tổng tiền đơn hàng
+    OS->>DB: Lưu Đơn hàng & Chi tiết đơn hàng
+    DB-->>OS: Trả về đơn hàng đã lưu
     
-    OS->>MQ: Send confirmation to order_queue
-    Note over MQ,US: User Service consumes event & processes background email
+    OS->>MQ: Gửi tin nhắn vào order_queue
+    Note over MQ,US: User Service nhận tin nhắn và xử lý gửi email xác nhận ngầm
     
-    OS-->>GW: Return Order Details
-    GW-->>Buyer: Order Confirmation Response
+    OS-->>GW: Trả về kết quả tạo đơn hàng
+    GW-->>Buyer: Hiển thị Đơn hàng đã đặt thành công
 ```
 
 ---
 
-## 5. Payment Workflow (VNPay Integration)
+## 5. Luồng thanh toán trực tuyến (VNPay Integration)
 
-### Description
-A user pays for an order using an online banking gateway, which returns cryptographic feedback to update the payment status.
+### Mô tả
+Tạo liên kết để khách hàng thanh toán qua ngân hàng, nhận kết quả mã hóa từ cổng thanh toán để xác nhận giao dịch.
 
-### Step-by-Step Process
-1. The frontend requests payment creation by calling `POST /payments/create?amount=...&orderInfo=...`.
-2. `payment-service` calculates checkout properties and appends the merchant identifier (`vnp_TmnCode`).
-3. Sorts all parameters and hashes them using HMAC-SHA512 with a secret key (`vnp_HashSecret`) to create the signature (`vnp_SecureHash`).
-4. Returns the compiled URL to the client. The client is redirected to the VNPay Sandbox page.
-5. The user completes payment on VNPay. VNPay redirects the user back to the frontend Return URL (`/payments/vnpay-return`).
-6. `payment-service` reads callback query parameters, strips the signature, hashes parameters again, and compares hashes.
-7. If signatures match and response code is `"00"`, the payment is verified as successful.
+### Các bước xử lý
+1. Người mua nhấn chọn thanh toán, frontend gửi yêu cầu tới `POST /payments/create?amount=...&orderInfo=...`.
+2. Dịch vụ `payment-service` tiếp nhận, lấy cấu hình merchant (`vnp_TmnCode`).
+3. Sắp xếp các tham số thanh toán theo thứ tự bảng chữ cái, sử dụng khóa bí mật (`vnp_HashSecret`) để tính mã băm HMAC-SHA512 (`vnp_SecureHash`).
+4. Trả URL thanh toán hoàn chỉnh về cho client. Frontend chuyển hướng người dùng sang trang thanh toán của VNPay.
+5. Người dùng nhập thẻ ngân hàng và thanh toán thành công. VNPay chuyển hướng người dùng quay lại đường dẫn Return URL (`/payments/vnpay-return`).
+6. Dịch vụ `payment-service` tiếp nhận các tham số phản hồi, loại bỏ chữ ký cũ, tiến hành băm lại dữ liệu bằng khóa bí mật và so sánh đối chiếu chữ ký.
+7. Nếu chữ ký trùng khớp và mã phản hồi `vnp_ResponseCode == "00"`, giao dịch được xác thực là thanh toán thành công.
 
-### Sequence Diagram
+### Sơ đồ tuần tự (Sequence Diagram)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Buyer as Buyer Client
+    actor Buyer as Client (Người mua)
     participant GW as API Gateway
     participant PM as Payment Service
-    participant VN as VNPay Sandbox
+    participant VN as Cổng VNPay
 
     Buyer->>GW: POST /payments/create?amount=X&orderInfo=Y
-    GW->>PM: Route to Payment Service
-    PM->>PM: Calculate checksum signature using HMAC-SHA512
-    PM-->>GW: Return paymentUrl
-    GW-->>Buyer: Return paymentUrl
+    GW->>PM: Chuyển tiếp yêu cầu thanh toán
+    PM->>PM: Tạo mã băm bảo mật HMAC-SHA512
+    PM-->>GW: Trả về paymentUrl
+    GW-->>Buyer: Trả về paymentUrl
     
-    Buyer->>VN: Redirect browser to VNPAY checkout page
-    Note over VN: User inputs banking credentials / pays
-    VN-->>Buyer: Redirect back to client return URL
+    Buyer->>VN: Trình duyệt chuyển hướng sang trang thanh toán VNPay
+    Note over VN: Người dùng thực hiện thanh toán qua tài khoản/thẻ
+    VN-->>Buyer: Chuyển hướng quay lại trang Return URL của Client
     
     Buyer->>GW: GET /payments/vnpay-return?vnp_SecureHash=...&vnp_ResponseCode=00
-    GW->>PM: Forward callback params
-    PM->>PM: Verify signature (HMAC recalculation)
-    PM->>PM: Check vnp_ResponseCode == "00"
-    PM-->>GW: HTTP 200 OK ("Thanh toán thành công")
-    GW-->>Buyer: Display payment success screen
+    GW->>PM: Chuyển tiếp các tham số callback của VNPay
+    PM->>PM: Xác thực chữ ký HMAC-SHA512
+    PM->>PM: Kiểm tra mã phản hồi vnp_ResponseCode == "00"
+    PM-->>GW: Trả về kết quả "Thanh toán thành công"
+    GW-->>Buyer: Hiển thị màn hình Thanh toán đơn hàng thành công
 ```
 
 ---
 
-## 6. Real-Time Chat & Offline Notifications
+## 6. Luồng chat trực tiếp & thông báo ngoại tuyến
 
-### Description
-Users send messages in real-time, which prompts background notifications to offline users.
+### Mô tả
+Hai người dùng trò chuyện thương lượng trực tiếp, hệ thống kích hoạt thông báo ngầm nếu đối phương không online trong phòng chat.
 
-### Step-by-Step Process
-1. Sender posts a message to `/chat/rooms/{roomId}/messages`.
-2. `chat-service` saves the message in `chat_db`.
-3. `chat-service` sends the message to the active WebSocket channel (`/topic/chat/{roomId}`) if the receiver is online.
-4. `chat-service` generates a notification packet: `CHAT|senderId|receiverId|roomId|content` and publishes it to `chat.exchange` in RabbitMQ.
-5. `notification-service` consumes this packet from `chat_queue`.
-6. `notification-service` queries `user-service` (`GET /users/{senderId}`) synchronously via REST to retrieve the sender's full name.
-7. Saves a new notification record (`isRead = false`) to `notification_db`.
-8. Emits the notification to `/topic/notifications/{receiverId}` via WebSocket. The client's navbar unread indicator increments dynamically.
+### Các bước xử lý
+1. Người gửi nhập nội dung và bấm gửi tin nhắn trong giao diện chat.
+2. Dịch vụ `chat-service` lưu tin nhắn mới vào bảng `chat_messages` trong database `chat_db`.
+3. `chat-service` đẩy trực tiếp tin nhắn qua kênh WebSocket `/topic/chat/{roomId}` để hiển thị tức thời nếu đối phương đang mở phòng chat.
+4. Đồng thời, `chat-service` tạo chuỗi sự kiện `CHAT|senderId|receiverId|roomId|content` và đẩy vào exchange `chat.exchange` của RabbitMQ.
+5. Dịch vụ `notification-service` lắng nghe từ hàng đợi `chat_queue` và tiêu thụ tin nhắn này.
+6. `notification-service` thực hiện cuộc gọi REST đồng bộ tới `user-service` để lấy tên đầy đủ của người gửi.
+7. Tạo bản ghi thông báo mới với cờ `isRead = false` trong database `notification_db`.
+8. Đẩy cảnh báo tin nhắn mới qua kênh WebSocket `/topic/notifications/{receiverId}` để hiển thị thông báo góc màn hình và cập nhật số lượng thông báo chưa đọc trên thanh điều hướng của người nhận.
 
-### Sequence Diagram
+### Sơ đồ tuần tự (Sequence Diagram)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Buyer as Buyer Client
+    actor Buyer as Client (Người mua)
     participant GW as API Gateway
     participant CS as Chat Service
     participant MQ as RabbitMQ Broker
     participant NS as Notification Service
     participant US as User Service
-    actor Seller as Seller Client
+    actor Seller as Client (Người bán)
 
-    Buyer->>GW: POST /chat/rooms/{roomId}/messages (Content)
-    GW->>CS: Route to Chat Service (JWT validated)
-    CS->>CS: Save message in chat_messages table
+    Buyer->>GW: POST /chat/rooms/{roomId}/messages (Nội dung)
+    GW->>CS: Chuyển tiếp tới Chat Service (Xác thực JWT)
+    CS->>CS: Lưu tin nhắn vào bảng chat_messages
     
-    CS->>MQ: Publish "CHAT|buyerId|sellerId|roomId|content" to chat.exchange
-    CS-->>GW: Return Message Response
-    GW-->>Buyer: Message Sent OK
+    CS->>MQ: Gửi sự kiện "CHAT|buyerId|sellerId|roomId|content" lên chat.exchange
+    CS-->>GW: Trả về tin nhắn đã lưu
+    GW-->>Buyer: Báo gửi tin nhắn thành công
     
-    Note over MQ,NS: RabbitMQ Listener triggers
-    MQ->>NS: Deliver message to CHAT_QUEUE
-    NS->>US: GET /users/{buyerId} (Fetch Sender Name)
-    US-->>NS: Return User Details (Name: "An")
-    NS->>NS: Save notification record (An đã nhắn tin: content)
-    NS->>GW: WebSocket/Poll: Push to /topic/notifications/{sellerId}
-    GW-->>Seller: Increment unread counter / Show toaster
+    Note over MQ,NS: RabbitMQ Listener kích hoạt ngầm
+    MQ->>NS: Truyền tin nhắn đến CHAT_QUEUE của Notification Service
+    NS->>US: GET /users/{buyerId} (Lấy tên người gửi)
+    US-->>NS: Trả về thông tin người dùng (Tên: "An")
+    NS->>NS: Lưu bản ghi thông báo (An đã nhắn tin: content)
+    NS->>GW: Đẩy thông báo qua kênh /topic/notifications/{sellerId}
+    GW-->>Seller: Cập nhật số thông báo chưa đọc / Hiển thị Toaster
 ```
 
 ---
 
-## 7. Architectural Gaps & Limitations
+## 7. Các hạn chế và thiếu sót về mặt kiến trúc hiện tại
 
-* **No Stock Deduction**: The `order-service` verifies product prices in `product-service`, but it does not deduct inventory (`stock` count in `product-service`) upon order placement.
-* **No Payment-Order Linking**: When a VNPay transaction completes successfully in `payment-service`, it logs the status but does not notify `order-service` via API or messaging to update the order state (e.g. from `UNPAID` to `PAID`).
-* **Frontend Polling Fallback**: The React client uses `setInterval` (polling at 3s and 5s intervals) to retrieve messages and notifications, ignoring the backend's active STOMP WebSocket configurations.
+* **Chưa có luồng trừ kho**: Khi tạo đơn hàng thành công trong `order-service`, hệ thống chỉ kiểm tra thông tin và lưu đơn chứ chưa thực hiện trừ đi số lượng tồn kho (`stock` của sản phẩm tại `product-service`).
+* **Chưa liên kết trạng thái thanh toán**: Khi thanh toán thành công qua VNPay tại `payment-service`, hệ thống chỉ ghi nhận kết quả thành công và ghi log chứ chưa thực hiện gọi API hay bắn tin nhắn để cập nhật trạng thái đơn hàng của `order-service` từ "Chưa thanh toán" sang "Đã thanh toán".
+* **Sử dụng cơ chế Polling thay vì WebSocket hoàn chỉnh ở Frontend**: Mặc dù backend đã cấu hình đầy đủ máy chủ WebSocket STOMP cho tin nhắn chat và thông báo, ứng dụng React Frontend hiện tại vẫn sử dụng bộ định thời `setInterval` (3 giây để lấy tin nhắn, 5 giây để lấy thông báo) để lấy dữ liệu từ các API REST thường.

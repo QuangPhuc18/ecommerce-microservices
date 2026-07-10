@@ -1,181 +1,181 @@
-# 03. Microservices Documentation
+# 03. Tài liệu các Microservices
 
-This document provides a comprehensive technical reference for each microservice in the **ĐồCũ** secondhand e-commerce platform.
-
----
-
-## 1. Eureka Server (Service Registry)
-
-### Purpose
-Acts as the central directory for service discovery, enabling dynamic client-side load balancing and routing without hardcoded IP addresses.
-
-* **Technology**: Java 21, Spring Boot, Spring Cloud Netflix Eureka Server.
-* **Port**: `8761`
-* **Configuration**: Configured to disable self-preservation in development environments and prevent registering itself as a client.
-* **Communication**: Downstream services register via HTTP heartbeats; the API Gateway queries it dynamically to resolve service locations.
+Tài liệu này cung cấp thông tin kỹ thuật chi tiết cho từng microservice trong hệ thống chợ đồ cũ **ĐồCũ**.
 
 ---
 
-## 2. API Gateway
+## 1. Eureka Server (Dịch vụ đăng ký & phát hiện)
 
-### Purpose
-The entry point for all clients, decoupling the client applications from the backend microservice network layout.
+### Mục đích
+Đóng vai trò là danh bạ trung tâm để quản lý địa chỉ của các dịch vụ, cho phép API Gateway và các dịch vụ nội bộ tìm thấy nhau một cách động mà không cần cấu hình cứng IP.
 
-* **Technology**: Spring Cloud Gateway, WebFlux (Project Reactor).
-* **Port**: `8088`
-* **Responsibilities**:
-  * **Routing**: Maps public paths (e.g. `/products/**`) to service instances using dynamic Eureka lookups (`lb://product-service`).
-  * **Edge Security**: Runs `AuthenticationFilter` to validate JWT authorization headers.
-  * **Context Ingestion**: Parses token claims and forwards `X-User-Id` and `X-User-Role` headers to downstream microservices.
-  * **CORS Management**: Injects global CORS configuration enabling wildcards (`*`) for origins, headers, and methods (GET, POST, PUT, DELETE, OPTIONS).
-* **Open Endpoints (Bypass Security)**:
+* **Công nghệ**: Java 21, Spring Boot, Spring Cloud Netflix Eureka Server.
+* **Cổng (Port)**: `8761`
+* **Cấu hình chính**: Tắt chế độ tự bảo vệ (self-preservation) trong môi trường phát triển và cấu hình không tự đăng ký chính nó làm client.
+* **Giao tiếp**: Nhận các yêu cầu đăng ký và nhịp tim (heartbeat) từ các microservice thông qua giao thức HTTP REST.
+
+---
+
+## 2. API Gateway (Cổng kết nối biên)
+
+### Mục đích
+Là điểm chạm duy nhất cho tất cả các kết nối từ phía client, giúp che giấu cấu trúc mạng nội bộ của các microservice phía sau.
+
+* **Công nghệ**: Spring Cloud Gateway, WebFlux (Project Reactor).
+* **Cổng (Port)**: `8088`
+* **Nhiệm vụ chính**:
+  * **Định tuyến tin cậy**: Ánh xạ các đường dẫn công khai (ví dụ: `/products/**`) đến các thực thể dịch vụ nội bộ tương ứng thông qua Eureka (`lb://product-service`).
+  * **Bảo mật biên**: Sử dụng `AuthenticationFilter` để giải mã và kiểm tra chữ ký của Access Token JWT.
+  * **Chèn ngữ cảnh**: Trích xuất dữ liệu người dùng từ token và nhúng các tiêu đề `X-User-Id` và `X-User-Role` vào yêu cầu chuyển tiếp downstream.
+  * **Cấu hình CORS toàn cục**: Cho phép nhận yêu cầu từ mọi nguồn (`*`), hỗ trợ các phương thức GET, POST, PUT, DELETE, OPTIONS.
+* **Đường dẫn không cần xác thực (Bypass Endpoints)**:
   * `/auth/register`, `/auth/login`, `/auth/refresh`
   * `/users/register`, `/users/login`
   * `/products/categories`
   * `/eureka`
   * `/v3/api-docs`, `/swagger-ui`
-  * Public `GET` requests to `/products/**` and `/media/images/**`
+  * Các yêu cầu `GET` xem danh sách sản phẩm `/products/**` và tải ảnh công khai `/media/images/**`.
 
 ---
 
-## 3. User Service
+## 3. User Service (Dịch vụ người dùng & xác thực)
 
-### Purpose
-Manages user accounts, authentication tokens, security contexts, and user profiles.
+### Mục đích
+Quản lý thông tin tài khoản người dùng, hồ sơ cá nhân và chịu trách nhiệm cấp phát/thu hồi token xác thực.
 
-* **Technology**: Spring Boot, Spring Security, Spring Data JPA, Redis.
-* **Port**: `8085`
-* **Database**: `user_db` (MySQL)
-* **Caching**: Redis (storing Refresh Tokens with 7-day TTL).
-* **Responsibilities**:
-  * **Registration & Sign-in**: Secure password storage utilizing BCrypt hash verification.
-  * **Dual-Token Handshake**: Emits short-lived JWT tokens and registers long-lived Refresh Tokens in Redis.
-  * **Session Management**: Revokes Refresh Tokens upon user logout.
-  * **Profile Editing**: Updates user fields (name, phone, avatar URL).
-* **Messaging**:
-  * **Listener**: Listens to `order_queue` to receive order confirmation strings. Simulates background workflows (e.g. sending a verification email to the user).
-* **Selected Technology Rationale**: Spring Security offers robust filter structures for token authentication. Redis is optimal for token blacklisting and session timeouts due to high throughput and automated TTL eviction.
-* **Improvements**: Implement password reset flows (with verification codes), email validation, and OAuth2 social logins (Google/Facebook).
-
----
-
-## 4. Product Service
-
-### Purpose
-Handles the product catalog, dynamic specifications, category definitions, and user bookmark lists.
-
-* **Technology**: Spring Boot, Spring Data JPA.
-* **Port**: `8081`
-* **Database**: `product_db` (MySQL)
-* **Responsibilities**:
-  * **Listing CRUD**: Creates, updates, and deletes secondhand item postings.
-  * **Dynamic Filtering**: Implements Spring Data Specification (`ProductSpecification`) allowing combinatoric queries over keyword, category, location, min/max price, item condition, and status.
-  * **Bumping System**: Allows sellers to modify `bumpedAt` timestamps, moving their listings to the top of catalog queries.
-  * **Favorites**: Allows users to save items to their favorites (persisted in `favorite_products` table).
-* **Technical Note on Elasticsearch**:
-  * The service includes Elasticsearch dependencies and repository classes (`ProductSearchRepository`, `ProductDocument`). However, it currently excludes Elasticsearch auto-configuration, relying instead on JPA SQL Specification for search operations.
-* **Selected Technology Rationale**: Spring Data Specification makes dynamic, multi-parameter SQL search simple to maintain without writing raw queries.
-* **Improvements**: Fully enable the Elasticsearch integration to enable fuzzy text searches, synonyms, and high-performance indexing. Add scheduled cron jobs to automatically mark items as expired.
+* **Công nghệ**: Spring Boot, Spring Security, Spring Data JPA, Redis.
+* **Cổng (Port)**: `8085`
+* **Cơ sở dữ liệu**: `user_db` (MySQL)
+* **Bộ nhớ đệm**: Redis (quản lý Refresh Token với thời hạn 7 ngày).
+* **Nhiệm vụ chính**:
+  * **Đăng ký & Đăng nhập**: Mã hóa và so khớp mật khẩu bằng thư viện mã hóa BCrypt.
+  * **Cấp phát Token**: Tạo Access Token JWT và Refresh Token. Lưu trữ Refresh Token vào Redis để kiểm soát phiên đăng nhập.
+  * **Đăng xuất**: Xóa Refresh Token khỏi Redis để vô hiệu hóa phiên.
+  * **Hồ sơ cá nhân**: Cập nhật thông tin hiển thị (tên, số điện thoại, đường dẫn ảnh đại diện).
+* **Giao tiếp sự kiện**:
+  * **Listener**: Lắng nghe hàng đợi `order_queue` để nhận thông tin khi người dùng tạo đơn hàng thành công, từ đó chạy tác vụ gửi email xác nhận.
+* **Lý do lựa chọn công nghệ**: Spring Security cung cấp cấu trúc bộ lọc (Filter Chain) mạnh mẽ cho việc quản lý JWT. Redis là giải pháp tối ưu để lưu trữ Refresh Token nhờ tốc độ đọc ghi cực nhanh và hỗ trợ tự động hủy khóa qua TTL.
+* **Cải tiến trong tương lai**: Bổ sung tính năng khôi phục mật khẩu qua mã OTP gửi về email, xác thực 2 lớp (2FA) và đăng nhập bằng tài khoản MXH (Google, Facebook).
 
 ---
 
-## 5. Order Service
+## 4. Product Service (Dịch vụ sản phẩm & danh mục)
 
-### Purpose
-Coordinates order processing, validating purchase details across domains, and recording order transactions.
+### Mục đích
+Quản lý kho hàng đồ cũ, lưu trữ danh mục sản phẩm, xử lý các bộ lọc tìm kiếm nâng cao và danh sách tin đăng yêu thích.
 
-* **Technology**: Spring Boot, Spring Data JPA, `RestTemplate`.
-* **Port**: `8082`
-* **Database**: `order_db` (MySQL)
-* **Responsibilities**:
-  * **Order Placement**: Receives buying requests containing product IDs and quantities.
-  * **Synchronous Verification**: Calls `user-service` to confirm the buyer exists, and loops through `product-service` to fetch current item pricing.
-  * **Asynchronous Integration**: Publishes an order confirmation string to RabbitMQ's `order_queue` upon saving the transaction.
-* **Selected Technology Rationale**: Separating orders from products ensures transactional isolation. Spring Data JPA easily handles order item relations.
-* **Improvements**: Add transaction rollback flows (Saga pattern) if inventory validation fails. Integrate status tracking (Pending, Confirmed, Shipped, Cancelled).
-
----
-
-## 6. Chat Service
-
-### Purpose
-Enables buyer-seller communications directly tied to specific product listings.
-
-* **Technology**: Spring Boot, Spring Security, Spring Data JPA, Spring WebSocket (STOMP message broker).
-* **Port**: `8086`
-* **Database**: `chat_db` (MySQL)
-* **Responsibilities**:
-  * **Room Management**: Creates or retrieves chat rooms mapping `(buyerId, sellerId, productId)`.
-  * **Message Archival**: Persists chat bubbles (text, images, location coordinates) in MySQL.
-  * **Unread Tracker**: Tracks unread message counts per user.
-  * **Real-time Dispatch**: Emits events to `/topic/chat/{roomId}` via WebSocket.
-  * **MQ Notification**: Publishes a formatted string (`CHAT|sender|receiver|roomId|content`) to RabbitMQ `chat.exchange` with routing key `chat.notification.new` to alert offline users.
-* **Selected Technology Rationale**: Spring WebSocket provides a native STOMP broker, reducing the need for external brokers in development.
-* **Improvements**: Migrate from polling (which the React client currently falls back on) to persistent STOMP WebSocket connections. Add support for typing indicators and message deletes.
+* **Công nghệ**: Spring Boot, Spring Data JPA.
+* **Cổng (Port)**: `8081`
+* **Cơ sở dữ liệu**: `product_db` (MySQL)
+* **Nhiệm vụ chính**:
+  * **Nghiệp vụ CRUD**: Tạo mới, cập nhật thông tin và xóa tin đăng bán đồ cũ.
+  * **Bộ lọc tìm kiếm động**: Áp dụng Spring Data Specification (`ProductSpecification`) để kết hợp linh hoạt nhiều điều kiện tìm kiếm (từ khóa, danh mục, vị trí, khoảng giá, tình trạng hao mòn, trạng thái bán).
+  * **Đẩy tin (Bump)**: Cập nhật trường `bumpedAt` thành thời gian hiện tại giúp tin đăng được xếp lên đầu trang tìm kiếm.
+  * **Tin yêu thích**: Quản lý việc đánh dấu lưu/hủy lưu sản phẩm của từng thành viên.
+* **Lưu ý về Elasticsearch**:
+  * Mã nguồn có tích hợp các thư viện và lớp repository của Elasticsearch (`ProductSearchRepository`, `ProductDocument`). Tuy nhiên, cấu hình tự động của Elasticsearch hiện đang bị loại trừ (`exclude`) trong `application.properties` để hệ thống tập trung tìm kiếm qua database MySQL bằng JPA Specification.
+* **Lý do lựa chọn công nghệ**: Spring Data Specification giúp viết mã tìm kiếm động, đa tham số một cách tự nhiên và an toàn trước các cuộc tấn công SQL Injection.
+* **Cải tiến trong tương lai**: Kích hoạt lại Elasticsearch để tìm kiếm văn bản toàn văn (full-text search) mượt mà hơn, hỗ trợ tìm kiếm không dấu và sửa lỗi chính tả. Bổ sung tiến trình định kỳ tự động ẩn các tin đăng quá hạn.
 
 ---
 
-## 7. Media Service
+## 5. Order Service (Dịch vụ đơn hàng)
 
-### Purpose
-Handles file storage, hosting, and serving image assets.
+### Mục đích
+Xử lý các giao dịch mua hàng, điều phối thông tin xác thực giữa người mua và sản phẩm và lưu trữ lịch sử mua bán.
 
-* **Technology**: Spring Boot, Local Filesystem storage.
-* **Port**: `8083`
-* **Database**: *None (No database required)*
-* **Responsibilities**:
-  * **Upload**: Accepts file streams, generates unique filenames, saves them to a configurable storage folder (`./uploads`), and returns the file's path.
-  * **Asset Serving**: Streams requested images with appropriate media type headers (image/png, image/jpeg, image/gif).
-* **Selected Technology Rationale**: Lightweight storage handling without database overhead, allowing simple integration with local server environments.
-* **Improvements**: Add file resizing and compression dynamically before saving to conserve space. Replace local storage with cloud object storage (e.g. AWS S3 or MinIO) for cloud-native deployment.
-
----
-
-## 8. Notification Service
-
-### Purpose
-Manages system-wide alerts, processing inbound events and routing them to users.
-
-* **Technology**: Spring Boot, Spring Data JPA, Spring WebSocket (STOMP broker), `RestTemplate`.
-* **Port**: `8087`
-* **Database**: `notification_db` (MySQL)
-* **Responsibilities**:
-  * **Inbound Listeners**: Listens to RabbitMQ `chat_queue`.
-  * **Context Enrichment**: Upon receiving a chat notification message, it calls `user-service` synchronously via HTTP REST to fetch the sender's full name.
-  * **State Retention**: Saves the notification to `notifications` table with `isRead = false`.
-  * **Client Push**: Dispatches real-time alerts over WebSocket to `/topic/notifications/{userId}`.
-* **Selected Technology Rationale**: AMQP listener makes event ingestion non-blocking. Decoupling notifications from the chat service ensures chat operations are fast and failure-resistant.
-* **Improvements**: Integrate email notifications or Firebase Cloud Messaging (FCM) for mobile push notifications.
+* **Công nghệ**: Spring Boot, Spring Data JPA, `RestTemplate`.
+* **Cổng (Port)**: `8082`
+* **Cơ sở dữ liệu**: `order_db` (MySQL)
+* **Nhiệm vụ chính**:
+  * **Tạo đơn hàng**: Tiếp nhận yêu cầu mua sản phẩm kèm số lượng từ phía client.
+  * **Xác thực đồng bộ**: Gọi sang `user-service` để kiểm tra tài khoản người mua và gọi sang `product-service` để xác nhận giá bán của sản phẩm.
+  * **Phát sự kiện**: Sau khi lưu đơn hàng, gửi một chuỗi thông tin vào hàng đợi RabbitMQ `order_queue` để các dịch vụ khác tiêu thụ.
+* **Lý do lựa chọn công nghệ**: Phân tách nghiệp vụ đơn hàng giúp bảo vệ dữ liệu tài chính giao dịch, tránh ảnh hưởng khi các luồng duyệt sản phẩm bị quá tải.
+* **Cải tiến trong tương lai**: Áp dụng mẫu thiết kế Saga (Saga Pattern) để xử lý hoàn tiền hoặc hủy đơn hàng nếu có lỗi hệ thống xảy ra. Bổ sung trạng thái chi tiết cho đơn hàng (Chờ thanh toán, Đã xác nhận, Đang giao, Đã hoàn thành).
 
 ---
 
-## 9. Review Service
+## 6. Chat Service (Dịch vụ nhắn tin)
 
-### Purpose
-Allows buyers to review and score sellers, establishing platform trust.
+### Mục đích
+Cung cấp kênh liên lạc thời gian thực và lưu trữ lịch sử trò chuyện trực tiếp giữa người mua và người bán về một sản phẩm cụ thể.
 
-* **Technology**: Spring Boot, Spring Data JPA.
-* **Port**: `8089`
-* **Database**: `review_db` (MySQL)
-* **Responsibilities**:
-  * **Review Submission**: Saves review records containing scores (1-5 stars), comments, and image attachments.
-  * **Seller Reply**: Enables sellers to respond to a specific review.
-  * **Average Computation**: Dynamically calculates average scores for users.
-* **Selected Technology Rationale**: Relational databases excel at aggregating review scores and maintaining comment feeds.
-* **Improvements**: Enforce check policies requiring users to have completed an order with a seller before leaving a review (preventing rating manipulation).
+* **Công nghệ**: Spring Boot, Spring Security, Spring Data JPA, Spring WebSocket (giao thức STOMP).
+* **Cổng (Port)**: `8086`
+* **Cơ sở dữ liệu**: `chat_db` (MySQL)
+* **Nhiệm vụ chính**:
+  * **Phòng chat**: Khởi tạo phòng chat duy nhất cho bộ ba `(buyerId, sellerId, productId)`.
+  * **Lịch sử tin nhắn**: Lưu trữ nội dung tin nhắn (chữ, ảnh, liên kết vị trí GPS) vào cơ sở dữ liệu.
+  * **Quản lý trạng thái đọc**: Đánh dấu tin nhắn đã đọc và trả về số lượng tin nhắn chưa đọc của người dùng.
+  * **Truyền tải thời gian thực**: Đẩy tin nhắn trực tiếp qua kênh `/topic/chat/{roomId}` sử dụng kết nối WebSocket.
+  * **Thông báo ngầm**: Bắn sự kiện định dạng `CHAT|sender|receiver|roomId|content` vào exchange `chat.exchange` để kích hoạt thông báo cho người nhận khi họ không ở trong phòng chat.
+* **Lý do lựa chọn công nghệ**: Spring WebSocket hỗ trợ giao thức STOMP giúp dễ dàng chia sẻ và phân phối tin nhắn theo các kênh cụ thể mà không cần cài đặt các thư viện socket bên ngoài phức tạp.
+* **Cải tiến trong tương lai**: Chuyển đổi mã nguồn React Client từ cơ chế Polling (gọi API lấy tin nhắn mỗi 3 giây) sang kết nối WebSocket STOMP hoàn chỉnh. Thêm tính năng hiển thị trạng thái "đang soạn tin" (typing indicators).
 
 ---
 
-## 10. Payment Service
+## 7. Media Service (Dịch vụ lưu trữ tệp tin)
 
-### Purpose
-Manages online transactions, integrating VNPay payment gateway.
+### Mục đích
+Đóng vai trò là kho chứa và phân phối các tệp tin hình ảnh sản phẩm và ảnh đại diện người dùng.
 
-* **Technology**: Spring Boot, VNPAY Sandbox API.
-* **Port**: `8090`
-* **Database**: *None (Integrations only)*
-* **Responsibilities**:
-  * **Redirect Creation**: Compiles merchant code, transaction parameters, return URL, and secret key to construct a secure VNPay gateway URL.
-  * **Checksum Verification**: Captures return calls and validates the HMAC-SHA512 signature to verify authenticity.
-* **Selected Technology Rationale**: Lightweight stateless service focused purely on cryptographic validation and payment routing.
-* **Improvements**: Persist transaction histories in a database. Implement a scheduler to verify payment status with VNPay if return callbacks are missed (polling query DR). Send RabbitMQ completion events to `order-service` to mark orders as paid.
+* **Công nghệ**: Spring Boot, Lưu trữ tập tin cục bộ (Local Filesystem).
+* **Cổng (Port)**: `8083`
+* **Cơ sở dữ liệu**: *Không sử dụng*
+* **Nhiệm vụ chính**:
+  * **Tải lên (Upload)**: Nhận các tệp tin đa phương tiện, tạo tên tệp ngẫu nhiên không trùng lặp, lưu trữ vào thư mục cấu hình (`./uploads`) và trả về đường dẫn tương đối.
+  * **Truy xuất**: Đọc và trả về luồng dữ liệu hình ảnh kèm tiêu đề Content-Type phù hợp (PNG, JPEG, GIF) để trình duyệt hiển thị trực tiếp.
+* **Lý do lựa chọn công nghệ**: Đơn giản hóa việc lưu trữ ảnh trong giai đoạn phát triển và thử nghiệm, giảm thiểu chi phí tích hợp bên thứ ba.
+* **Cải tiến trong tương lai**: Tự động tối ưu hóa dung lượng ảnh, nén ảnh và cắt ảnh theo các tỷ lệ chuẩn khi tải lên. Chuyển đổi việc lưu trữ tập tin cục bộ sang dịch vụ lưu trữ đám mây (như AWS S3 hoặc MinIO) để dễ dàng nhân bản container.
+
+---
+
+## 8. Notification Service (Dịch vụ thông báo)
+
+### Mục đích
+Tiếp nhận các sự kiện nghiệp vụ và đẩy cảnh báo tức thời cho người dùng cuối.
+
+* **Công nghệ**: Spring Boot, Spring Data JPA, Spring WebSocket (STOMP broker), `RestTemplate`.
+* **Cổng (Port)**: `8087`
+* **Cơ sở dữ liệu**: `notification_db` (MySQL)
+* **Nhiệm vụ chính**:
+  * **Tiêu thụ sự kiện (Consumer)**: Lắng nghe hàng đợi `chat_queue` của RabbitMQ.
+  * **Làm giàu dữ liệu**: Khi nhận tin nhắn chat mới, gọi REST sang `user-service` để lấy tên đầy đủ của người gửi tin nhắn.
+  * **Lưu trữ**: Lưu thông báo vào database với trạng thái chưa đọc.
+  * **Đẩy thông báo**: Gửi tin nhắn chứa thông báo qua kênh WebSocket `/topic/notifications/{userId}` đến client.
+* **Lý do lựa chọn công nghệ**: Việc xử lý thông báo bằng hàng đợi RabbitMQ giúp luồng gửi tin nhắn của người dùng không bị chậm trễ nếu hệ thống thông báo gặp sự cố hoặc phản hồi chậm.
+* **Cải tiến trong tương lai**: Tích hợp thêm dịch vụ gửi email tự động và Firebase Cloud Messaging (FCM) để đẩy thông báo lên ứng dụng di động ngay cả khi người dùng tắt trình duyệt.
+
+---
+
+## 9. Review Service (Dịch vụ đánh giá)
+
+### Mục đích
+Quản lý các phản hồi, đánh giá điểm uy tín giữa người mua và người bán sau khi thực hiện giao dịch.
+
+* **Công nghệ**: Spring Boot, Spring Data JPA.
+* **Cổng (Port)**: `8089`
+* **Cơ sở dữ liệu**: `review_db` (MySQL)
+* **Nhiệm vụ chính**:
+  * **Đăng đánh giá**: Lưu trữ điểm đánh giá từ 1 đến 5 sao, bình luận và danh sách ảnh chụp kèm theo.
+  * **Phản hồi đánh giá**: Cho phép người bán viết câu trả lời phản hồi cho từng đánh giá.
+  * **Tính điểm uy tín**: Tính toán điểm đánh giá trung bình của người bán để hiển thị công khai trên trang cá nhân.
+* **Lý do lựa chọn công nghệ**: Cơ sở dữ liệu quan hệ giúp thực hiện các phép tính trung bình cộng (AVG) và truy vấn sắp xếp lịch sử đánh giá một cách nhanh chóng và chính xác.
+* **Cải tiến trong tương lai**: Ràng buộc điều kiện đăng đánh giá: chỉ cho phép người mua đánh giá người bán khi có liên kết mã đơn hàng (`orderId`) đã hoàn thành, tránh tình trạng đánh giá ảo hoặc spam dìm uy tín.
+
+---
+
+## 10. Payment Service (Dịch vụ thanh toán)
+
+### Mục đích
+Xử lý các yêu cầu thanh toán không tiền mặt, tích hợp cổng thanh toán trực tuyến bên ngoài.
+
+* **Công nghệ**: Spring Boot, VNPAY Sandbox API.
+* **Cổng (Port)**: `8090`
+* **Cơ sở dữ liệu**: *Không sử dụng (Dịch vụ phi trạng thái - Stateless)*
+* **Nhiệm vụ chính**:
+  * **Tạo liên kết thanh toán**: Tiếp nhận thông tin số tiền và mã đơn hàng, sắp xếp các tham số và ký mã hóa bằng thuật toán HMAC-SHA512 với khóa bí mật để sinh ra URL thanh toán VNPay.
+  * **Xác thực kết quả**: Nhận cuộc gọi quay về (callback) từ VNPay, tính toán lại chữ ký HMAC-SHA512 để so sánh và xác minh kết quả giao dịch thành công/thất bại.
+* **Lý do lựa chọn công nghệ**: Tách biệt luồng thanh toán ra một dịch vụ phi trạng thái giúp đảm bảo an toàn thông tin giao dịch, dễ dàng bảo trì khi có cập nhật từ phía nhà cung cấp cổng thanh toán.
+* **Cải tiến trong tương lai**: Lưu trữ nhật ký giao dịch thanh toán vào cơ sở dữ liệu để phục vụ việc đối soát tài chính. Bắn tin nhắn sự kiện qua RabbitMQ về `order-service` để cập nhật trạng thái đơn hàng thành "Đã thanh toán" tự động khi VNPay trả kết quả thành công.
