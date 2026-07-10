@@ -30,7 +30,7 @@ sequenceDiagram
     participant GW as API Gateway
     participant US as User Service
     participant Redis as Redis Cache
-    database DB as MySQL (user_db)
+    participant DB as MySQL (user_db)
 
     User->>GW: POST /auth/login
     GW->>US: Chuyển tiếp POST /auth/login
@@ -64,7 +64,7 @@ sequenceDiagram
     participant GW as API Gateway
     participant MS as Media Service
     participant PS as Product Service
-    database DB as MySQL (product_db)
+    participant DB as MySQL (product_db)
     actor Admin as Client (Quản trị viên)
 
     %% Tải ảnh lên
@@ -134,7 +134,7 @@ sequenceDiagram
     participant OS as Order Service
     participant US as User Service
     participant PS as Product Service
-    database DB as MySQL (order_db)
+    participant DB as MySQL (order_db)
     participant MQ as RabbitMQ Broker
 
     Buyer->>GW: POST /orders (userId, danh sách sản phẩm)
