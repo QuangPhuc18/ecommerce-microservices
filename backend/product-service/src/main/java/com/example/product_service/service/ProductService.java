@@ -45,6 +45,8 @@ public class ProductService {
         product.setStatus(updatedProduct.getStatus());
         product.setApproved(updatedProduct.isApproved());
         product.setStock(updatedProduct.getStock());
+        product.setImageUrls(updatedProduct.getImageUrls());
+        product.setAttributes(updatedProduct.getAttributes());
         return productRepository.save(product);
     }
 

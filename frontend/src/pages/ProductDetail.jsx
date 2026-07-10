@@ -185,16 +185,21 @@ const ProductDetail = () => {
     
     setIsUploadingReviewImages(true);
     try {
-      const uploadPromises = files.map(file => {
-        const formData = new FormData();
-        formData.append('file', file);
-        return api.post('/media/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
       });
-      const responses = await Promise.all(uploadPromises);
-      const newImageUrls = responses.map(res => res.data.fileUrl);
-      setReviewImages(prev => [...prev, ...newImageUrls]);
+      
+      const res = await api.post('/media/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      if (res.data && res.data.urls) {
+        // Backend trả về đường dẫn tương đối (vd: /media/images/xxx.jpg)
+        // Nên ta nối thêm url máy chủ để trình duyệt tải được ảnh
+        const newImageUrls = res.data.urls.map(url => "http://localhost:8088" + url);
+        setReviewImages(prev => [...prev, ...newImageUrls]);
+      }
     } catch (err) {
       console.error("Lỗi upload ảnh:", err);
       alert("Không thể tải ảnh lên. Vui lòng thử lại.");
@@ -335,7 +340,13 @@ const ProductDetail = () => {
                     {rev.imageUrls && rev.imageUrls.length > 0 && (
                       <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
                         {rev.imageUrls.map((url, idx) => (
-                          <img key={idx} src={url} alt={`Review ${idx}`} className="w-20 h-20 object-cover rounded-lg border border-outline-variant/30 shadow-sm" />
+                          <img 
+                            key={idx} 
+                            src={url} 
+                            alt={`Review ${idx}`} 
+                            className="w-20 h-20 object-cover rounded-lg border border-outline-variant/30 shadow-sm cursor-pointer hover:opacity-80 transition-opacity" 
+                            onClick={() => window.open(url, '_blank')}
+                          />
                         ))}
                       </div>
                     )}

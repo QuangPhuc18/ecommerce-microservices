@@ -180,7 +180,7 @@ const Chat = () => {
       
       const fileUrls = uploadRes.data.urls;
       if (fileUrls && fileUrls.length > 0) {
-        const imageUrl = "http://localhost:8080" + fileUrls[0]; // Giả định url backend trả về tương đối
+        const imageUrl = "http://localhost:8088" + fileUrls[0]; // Giả định url backend trả về tương đối
 
         // Gửi tin nhắn IMAGE
         const msgRes = await api.post(`/chat/rooms/${activeRoom.id}/messages`, {
