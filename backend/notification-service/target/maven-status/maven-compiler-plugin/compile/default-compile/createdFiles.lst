@@ -1,3 +1,4 @@
+com\example\notification_service\config\RestTemplateConfig.class
 com\example\notification_service\listener\RabbitMQListener.class
 com\example\notification_service\NotificationServiceApplication.class
 com\example\notification_service\repository\NotificationRepository.class

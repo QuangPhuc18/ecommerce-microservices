@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
+import Navbar from '../components/Navbar';
 
 const Chat = () => {
   const { user, loading: authLoading } = useContext(AuthContext);
@@ -13,6 +14,8 @@ const Chat = () => {
   const [messageInput, setMessageInput] = useState('');
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
@@ -148,10 +151,96 @@ const Chat = () => {
           : r
       ));
       
+      
     } catch (error) {
       console.error("Lỗi gửi tin nhắn:", error);
       alert("Không thể gửi tin nhắn.");
     }
+  };
+
+  // 5. Gửi Ảnh
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeRoom) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn một tệp hình ảnh.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('files', file);
+
+      // Gọi api upload
+      const uploadRes = await api.post('/media/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const fileUrls = uploadRes.data.urls;
+      if (fileUrls && fileUrls.length > 0) {
+        const imageUrl = "http://localhost:8080" + fileUrls[0]; // Giả định url backend trả về tương đối
+
+        // Gửi tin nhắn IMAGE
+        const msgRes = await api.post(`/chat/rooms/${activeRoom.id}/messages`, {
+          content: imageUrl,
+          messageType: 'IMAGE'
+        });
+        
+        setMessages(prev => [...prev, msgRes.data.data]);
+        setRooms(prevRooms => prevRooms.map(r => 
+          r.id === activeRoom.id 
+            ? { ...r, lastMessage: "[Hình ảnh]", updatedAt: new Date().toISOString() } 
+            : r
+        ));
+      }
+    } catch (error) {
+      console.error("Lỗi upload ảnh:", error);
+      alert("Không thể tải ảnh lên.");
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // 6. Gửi Vị Trí
+  const handleSendLocation = () => {
+    if (!activeRoom) return;
+    
+    if (!navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị GPS.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const locationLink = `https://www.google.com/maps?q=${lat},${lng}`;
+
+        try {
+          const msgRes = await api.post(`/chat/rooms/${activeRoom.id}/messages`, {
+            content: locationLink,
+            messageType: 'LOCATION'
+          });
+          
+          setMessages(prev => [...prev, msgRes.data.data]);
+          setRooms(prevRooms => prevRooms.map(r => 
+            r.id === activeRoom.id 
+              ? { ...r, lastMessage: "[Vị trí]", updatedAt: new Date().toISOString() } 
+              : r
+          ));
+        } catch (error) {
+          console.error("Lỗi gửi vị trí:", error);
+        }
+      },
+      (error) => {
+        console.error("Lỗi lấy vị trí:", error);
+        alert("Không thể lấy vị trí hiện tại của bạn. Vui lòng cấp quyền vị trí cho trình duyệt.");
+      }
+    );
   };
 
   // Helper format thời gian
@@ -172,30 +261,8 @@ const Chat = () => {
 
   return (
     <div className="bg-background text-on-surface h-screen flex flex-col overflow-hidden animate-fade-in">
-      {/* TopNavBar */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-lg h-16 bg-surface shadow-sm max-w-none mx-auto">
-        <div className="flex items-center gap-md">
-          <Link to="/" className="text-headline-lg font-headline-lg text-primary font-bold">ReValue Marketplace</Link>
-        </div>
-        <nav className="hidden md:flex gap-lg items-center">
-          <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md font-semibold">Trang chủ</Link>
-          <Link to="/categories" className="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md font-semibold">Danh mục</Link>
-          <Link to="/notifications" className="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md font-semibold">Thông báo</Link>
-          <span className="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md">Tin nhắn</span>
-        </nav>
-        <div className="flex items-center gap-md">
-          <Link to="/post" className="bg-primary-container text-on-primary font-bold py-2 px-4 rounded-xl active:scale-95 transition-transform font-body-md text-body-md hover:shadow-lg">
-            Đăng tin
-          </Link>
-          <div className="w-9 h-9 rounded-full bg-surface-variant flex items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors overflow-hidden border border-outline-variant/30">
-            {userProfile?.avatarUrl ? (
-              <img className="w-full h-full object-cover" alt="Avatar" src={userProfile.avatarUrl} />
-            ) : (
-              <span className="material-symbols-outlined text-on-surface-variant">account_circle</span>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Sử dụng Navbar chung thay vì header code cứng */}
+      <Navbar />
 
       <main className="pt-16 h-screen flex flex-1 overflow-hidden">
         {/* SideNavBar (Hidden on Mobile) */}
@@ -364,7 +431,23 @@ const Chat = () => {
                             </div>
                           )}
                           <div className={`${isMine ? 'bg-primary text-on-primary rounded-2xl rounded-br-none shadow-md' : 'bg-surface-container text-on-surface rounded-2xl rounded-bl-none shadow-sm'} p-4 hover:shadow-md transition-shadow`}>
-                            <p className="text-body-md font-body-md break-words whitespace-pre-wrap">{msg.content}</p>
+                            {msg.messageType === 'IMAGE' ? (
+                              <div className="w-48 sm:w-64 rounded-lg overflow-hidden cursor-pointer" onClick={() => window.open(msg.content, '_blank')}>
+                                <img src={msg.content} alt="Đính kèm" className="w-full h-auto object-cover" />
+                              </div>
+                            ) : msg.messageType === 'LOCATION' ? (
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 font-bold mb-1">
+                                  <span className="material-symbols-outlined text-sm">location_on</span>
+                                  Vị trí được chia sẻ
+                                </div>
+                                <a href={msg.content} target="_blank" rel="noreferrer" className={`block px-4 py-2 rounded-lg text-center font-bold text-sm transition-colors ${isMine ? 'bg-white text-primary hover:bg-gray-100' : 'bg-primary text-white hover:bg-primary-hover'}`}>
+                                  Mở trên Google Maps
+                                </a>
+                              </div>
+                            ) : (
+                              <p className="text-body-md font-body-md break-words whitespace-pre-wrap">{msg.content}</p>
+                            )}
                             <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-primary-fixed/70' : 'text-on-surface-variant'}`}>
                               {formatTime(msg.createdAt)}
                             </p>
@@ -380,12 +463,31 @@ const Chat = () => {
               {/* Chat Footer: Input Area */}
               <footer className="bg-surface border-t border-outline-variant/30 p-4 pb-6">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-3 bg-surface-container p-2 rounded-2xl shadow-inner focus-within:ring-2 focus-within:ring-primary-container focus-within:bg-surface-container-lowest transition-all">
-                  <button type="button" className="p-2 text-primary hover:bg-primary-container/20 rounded-full transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined">image</span>
+                  
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={isUploading} 
+                    className={`p-2 rounded-full transition-colors flex items-center justify-center ${isUploading ? 'text-gray-400' : 'text-primary hover:bg-primary-container/20'}`}
+                    title="Gửi hình ảnh"
+                  >
+                    {isUploading ? (
+                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    ) : (
+                      <span className="material-symbols-outlined">image</span>
+                    )}
                   </button>
-                  <button type="button" className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined">attach_file</span>
+                  
+                  <button 
+                    type="button" 
+                    onClick={handleSendLocation}
+                    className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors flex items-center justify-center"
+                    title="Gửi vị trí của bạn"
+                  >
+                    <span className="material-symbols-outlined">location_on</span>
                   </button>
+                  
                   <input 
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}

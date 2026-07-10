@@ -7,6 +7,9 @@ const SellerProfile = () => {
   const [activeTab, setActiveTab] = useState('Đang bán');
   const [seller, setSeller] = useState(null);
   const [products, setProducts] = useState([]);
+  const [soldProducts, setSoldProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewers, setReviewers] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +21,28 @@ const SellerProfile = () => {
         setSeller(userRes.data);
 
         // Lấy danh sách sản phẩm của seller
-        const productsRes = await api.get(`/products?sellerId=${id}&size=20`);
-        setProducts(productsRes.data.content || []);
+        const productsRes = await api.get(`/products?sellerId=${id}&size=100`);
+        const allProducts = productsRes.data.content || [];
+        setProducts(allProducts.filter(p => p.status !== 'SOLD' && p.status !== 'HIDDEN' && p.status !== 'REJECTED'));
+        setSoldProducts(allProducts.filter(p => p.status === 'SOLD'));
+
+        // Lấy đánh giá của seller
+        const revRes = await api.get(`/reviews/user/${id}`);
+        const fetchedReviews = revRes.data || [];
+        setReviews(fetchedReviews);
+
+        // Fetch tên reviewers
+        const reviewerIds = [...new Set(fetchedReviews.map(r => r.reviewerId))];
+        const reviewerMap = {};
+        for (const rId of reviewerIds) {
+          try {
+            const userRes = await api.get(`/users/${rId}`);
+            reviewerMap[rId] = userRes.data.name || userRes.data.email.split('@')[0];
+          } catch (e) {
+            reviewerMap[rId] = 'Người dùng ẩn';
+          }
+        }
+        setReviewers(reviewerMap);
       } catch (error) {
         console.error("Lỗi lấy thông tin người bán:", error);
       } finally {
@@ -160,9 +183,90 @@ const SellerProfile = () => {
         </div>
       )}
 
-      {activeTab !== 'Đang bán' && (
-        <div className="text-center py-20 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          Chưa có dữ liệu cho mục này.
+      {/* Tab Đã bán */}
+      {activeTab === 'Đã bán' && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {soldProducts.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">Người bán này chưa bán được sản phẩm nào.</div>
+          ) : (
+            soldProducts.map(product => (
+              <Link key={product.id} to={`/product/${product.id}`} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:-translate-y-1 hover:shadow-md transition-all duration-300 cursor-pointer group flex flex-col h-full relative opacity-80">
+                <div className="aspect-square relative overflow-hidden bg-gray-50">
+                  {product.imageUrls?.[0] ? (
+                    <img className="w-full h-full object-cover grayscale" alt={product.name} src={product.imageUrls[0]}/>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                       <span className="material-symbols-outlined text-4xl text-gray-300">image</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                    <span className="bg-[#1c1b1b]/80 text-white font-bold px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20 uppercase tracking-wider text-sm shadow-lg">Đã Bán</span>
+                  </div>
+                </div>
+                <div className="p-3 md:p-4 flex flex-col gap-1 flex-grow">
+                  <h3 className="text-sm font-semibold text-[#1c1b1b] line-clamp-2 min-h-[40px] leading-snug">{product.name}</h3>
+                  <p className="font-bold text-gray-500 text-base mt-1 line-through">{new Intl.NumberFormat('vi-VN').format(product.price)} đ</p>
+                  <div className="flex items-center justify-between mt-auto text-[11px] text-gray-500 pt-2 font-medium">
+                    <div className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">location_on</span>
+                      <span className="truncate max-w-[80px]">{product.location || 'Toàn quốc'}</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Tab Đánh giá */}
+      {activeTab === 'Đánh giá' && (
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
+          <h2 className="text-xl font-bold mb-6">Đánh giá từ khách hàng ({reviews.length})</h2>
+          {reviews.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">Người bán này chưa có đánh giá nào.</div>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map(rev => (
+                <div key={rev.id} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 uppercase">
+                      {(reviewers[rev.reviewerId] || 'U')[0]}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{reviewers[rev.reviewerId] || `Người dùng #${rev.reviewerId}`}</div>
+                      <div className="flex text-[#FFB800] text-xs">
+                        {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                      </div>
+                    </div>
+                    <span className="ml-auto text-xs text-gray-400">
+                      {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-700 mt-2">{rev.comment}</div>
+                  
+                  {/* Render images if any */}
+                  {rev.imageUrls && rev.imageUrls.length > 0 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
+                      {rev.imageUrls.map((url, idx) => (
+                        <img key={idx} src={url} alt={`Review ${idx}`} className="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm" />
+                      ))}
+                    </div>
+                  )}
+                  
+                  {rev.sellerReply && (
+                    <div className="mt-3 ml-12 p-3 bg-orange-50 border-l-2 border-[#f26522] rounded-r-lg">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="material-symbols-outlined text-[16px] text-[#f26522]">storefront</span>
+                        <span className="font-bold text-xs text-gray-800">Phản hồi từ người bán</span>
+                      </div>
+                      <div className="text-sm text-gray-600">{rev.sellerReply}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

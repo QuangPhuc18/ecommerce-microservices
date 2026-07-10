@@ -26,8 +26,8 @@ function App() {
       <Router>
         <Routes>
           {/* Layouts with custom/full-screen UI */}
+          {/* Layouts with custom/full-screen UI */}
           <Route path="/chat" element={<Chat />} />
-          <Route path="/manage-posts" element={<ManagePosts />} />
           <Route path="/saved-posts" element={<SavedPosts />} />
           <Route path="/search" element={<Search />} />
           <Route path="/settings" element={<UserSettings />} />
@@ -44,6 +44,7 @@ function App() {
                   <Route path="/post" element={<PostProduct />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
                   <Route path="/seller/:id" element={<SellerProfile />} />
+                  <Route path="/manage-posts" element={<ManagePosts />} />
                 </Routes>
               </main>
               <Footer />

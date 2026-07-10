@@ -38,4 +38,13 @@ public class ReviewController {
         response.put("averageRating", avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{reviewId}/reply")
+    public ResponseEntity<Review> replyToReview(@PathVariable Long reviewId, @RequestBody Map<String, String> payload) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found"));
+        review.setSellerReply(payload.get("reply"));
+        review.setRepliedAt(java.time.LocalDateTime.now());
+        return ResponseEntity.ok(reviewRepository.save(review));
+    }
 }

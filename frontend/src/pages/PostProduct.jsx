@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Camera, MapPin, Tag, Image as ImageIcon, X } from 'lucide-react';
 
-const categories = [
+const extendedCategories = [
   { id: 'Xe cộ', name: 'Xe cộ', icon: 'directions_car' },
   { id: 'Điện tử', name: 'Đồ điện tử', icon: 'smartphone' },
   { id: 'Nhà đất', name: 'Bất động sản', icon: 'home_work' },
@@ -11,7 +11,13 @@ const categories = [
   { id: 'Thú cưng', name: 'Thú cưng', icon: 'pets' },
   { id: 'Nội thất', name: 'Nội thất', icon: 'chair' },
   { id: 'Đồ gia dụng', name: 'Đồ gia dụng', icon: 'kitchen' },
-  { id: 'Khác', name: 'Khác', icon: 'more_horiz' }
+  { id: 'Việc làm', name: 'Việc làm', icon: 'work' },
+  { id: 'Dịch vụ', name: 'Dịch vụ', icon: 'build' },
+  { id: 'Mẹ và bé', name: 'Mẹ và bé', icon: 'child_care' },
+  { id: 'Thể thao', name: 'Thể thao', icon: 'sports_soccer' },
+  { id: 'Xe đạp', name: 'Xe đạp', icon: 'pedal_bike' },
+  { id: 'Đồ ăn', name: 'Thực phẩm', icon: 'restaurant' },
+  { id: 'Sách', name: 'Sách, VPP', icon: 'menu_book' }
 ];
 
 const PostProduct = () => {
@@ -23,6 +29,7 @@ const PostProduct = () => {
   const [step, setStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   
   const [formData, setFormData] = useState({
     category: '',
@@ -216,8 +223,15 @@ const PostProduct = () => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {categories.map((cat) => (
-            <button key={cat.id} onClick={() => handleSelectCategory(cat.id)} className="flex flex-col items-center justify-center p-6 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-primary-container hover:shadow-md transition-all duration-200 group text-center aspect-square">
+          {(showAllCategories ? extendedCategories : [...extendedCategories.slice(0, 7), { id: 'Khác', name: 'Khác', icon: 'more_horiz', isMoreBtn: true }]).map((cat) => (
+            <button 
+              key={cat.id} 
+              onClick={() => {
+                if (cat.isMoreBtn) setShowAllCategories(true);
+                else handleSelectCategory(cat.name);
+              }} 
+              className="flex flex-col items-center justify-center p-6 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-primary-container hover:shadow-md transition-all duration-200 group text-center aspect-square"
+            >
               <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center mb-4 group-hover:bg-primary-container/10 transition-colors">
                 <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary-container transition-colors">{cat.icon}</span>
               </div>

@@ -7,17 +7,67 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [userProfile, setUserProfile] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = React.useRef(null);
 
   React.useEffect(() => {
+    let intervalId;
     if (user?.userId) {
       import('../services/api').then(module => {
         const api = module.default;
+        
         api.get(`/users/${user.userId}`)
           .then(res => setUserProfile(res.data))
           .catch(err => console.error(err));
+          
+        const fetchNotifications = () => {
+          api.get(`/notifications/user/${user.userId}/unread-count`)
+            .then(res => setUnreadCount(res.data))
+            .catch(err => console.error(err));
+            
+          api.get(`/notifications/user/${user.userId}`)
+            .then(res => setNotifications(res.data))
+            .catch(err => console.error(err));
+        };
+        
+        fetchNotifications();
+        // Cập nhật ngầm mỗi 5 giây
+        intervalId = setInterval(fetchNotifications, 5000);
       });
     }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [user]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) { // Entity is isRead, but JSON is read or isRead depending on Jackson. Let's check both
+      try {
+        const api = (await import('../services/api')).default;
+        await api.put(`/notifications/${notification.id}/read`);
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true, isRead: true } : n));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (notification.type === 'CHAT') {
+      navigate('/chat');
+      setShowNotifications(false);
+    }
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -62,10 +112,50 @@ const Navbar = () => {
           <div className="flex items-center gap-4">
             {/* Trailing Icon Actions - Always Visible */}
             <div className="flex gap-2">
-              <button aria-label="notifications" className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
-                <span className="material-symbols-outlined">notifications</span>
-                <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
-              </button>
+              <div className="relative" ref={notificationRef}>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotifications(prev => !prev);
+                  }}
+                  aria-label="notifications" 
+                  className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative"
+                >
+                  <span className="material-symbols-outlined">notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white"></span>
+                  )}
+                </button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-[9999]">
+                    <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                      <h3 className="font-bold text-gray-800 text-sm">Thông báo</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-xs text-[#f26522] font-semibold">{unreadCount} chưa đọc</span>
+                      )}
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto bg-white">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-gray-500">Không có thông báo nào</div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div 
+                            key={notif.id} 
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`p-4 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${!(notif.read || notif.isRead) ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50'}`}
+                          >
+                            <p className={`text-sm ${!(notif.read || notif.isRead) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>{notif.message}</p>
+                            <span className="text-xs text-gray-400 mt-1 block">
+                              {new Date(notif.createdAt).toLocaleString('vi-VN')}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <Link to="/chat" aria-label="chat" className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
                 <span className="material-symbols-outlined">chat</span>
               </Link>

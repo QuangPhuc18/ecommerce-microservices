@@ -49,7 +49,10 @@ public class ChatMessageService {
 
         // Optional: Send notification via RabbitMQ
         Long receiverId = room.getBuyerId().equals(senderId) ? room.getSellerId() : room.getBuyerId();
-        String notification = String.format("User %d sent message to User %d in room %d", senderId, receiverId, roomId);
+        
+        // Dùng dấu | làm phân cách để dễ tách chuỗi. Thay thế các dấu | trong nội dung bằng khoảng trắng để tránh lỗi
+        String safeContent = request.getContent() != null ? request.getContent().replace("|", " ") : "";
+        String notification = String.format("CHAT|%d|%d|%d|%s", senderId, receiverId, roomId, safeContent);
         rabbitTemplate.convertAndSend("chat.exchange", "chat.notification.new", notification);
 
         return mapToResponse(savedMessage);

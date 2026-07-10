@@ -20,6 +20,12 @@ const ProductDetail = () => {
   const [ratingInput, setRatingInput] = useState(5);
   const [commentInput, setCommentInput] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewImages, setReviewImages] = useState([]);
+  const [isUploadingReviewImages, setIsUploadingReviewImages] = useState(false);
+  
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyInput, setReplyInput] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   useEffect(() => {
     const fetchProductAndSeller = async () => {
@@ -129,16 +135,19 @@ const ProductDetail = () => {
     }
     setIsSubmittingReview(true);
     try {
-      const newRev = {
+      await api.post('/reviews', {
         reviewerId: user.userId,
         reviewedUserId: product.sellerId,
+        orderId: null,
         rating: ratingInput,
-        comment: commentInput
-      };
-      await api.post('/reviews', newRev);
-      alert("Đăng đánh giá thành công!");
+        comment: commentInput,
+        imageUrls: reviewImages
+      });
+      
+      alert("Cảm ơn bạn đã đánh giá!");
       setCommentInput('');
       setRatingInput(5);
+      setReviewImages([]);
       
       const revRes = await api.get(`/reviews/user/${product.sellerId}`);
       setReviews(revRes.data || []);
@@ -152,6 +161,52 @@ const ProductDetail = () => {
     }
   };
 
+  const handleSubmitReply = async (reviewId) => {
+    if (!replyInput.trim()) return;
+    setIsSubmittingReply(true);
+    try {
+      await api.post(`/reviews/${reviewId}/reply`, { reply: replyInput });
+      alert("Đã gửi phản hồi!");
+      setReplyingTo(null);
+      setReplyInput('');
+      const revRes = await api.get(`/reviews/user/${product.sellerId}`);
+      setReviews(revRes.data || []);
+    } catch (err) {
+      console.error(err);
+      alert("Có lỗi khi gửi phản hồi.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const handleReviewImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    setIsUploadingReviewImages(true);
+    try {
+      const uploadPromises = files.map(file => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/media/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      });
+      const responses = await Promise.all(uploadPromises);
+      const newImageUrls = responses.map(res => res.data.fileUrl);
+      setReviewImages(prev => [...prev, ...newImageUrls]);
+    } catch (err) {
+      console.error("Lỗi upload ảnh:", err);
+      alert("Không thể tải ảnh lên. Vui lòng thử lại.");
+    } finally {
+      setIsUploadingReviewImages(false);
+    }
+  };
+
+  const removeReviewImage = (index) => {
+    setReviewImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   if (loading) return (
     <div className="pt-24 pb-32 flex justify-center items-center min-h-[60vh]">
       <div className="w-10 h-10 border-4 border-surface-variant border-t-primary rounded-full animate-spin"></div>
@@ -163,6 +218,26 @@ const ProductDetail = () => {
       Sản phẩm không tồn tại
     </div>
   );
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 24) {
+      if (diffHours === 0) {
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        return diffMins > 0 ? `ĐĂNG ${diffMins} PHÚT TRƯỚC` : 'VỪA ĐĂNG';
+      }
+      return `ĐĂNG ${diffHours} GIỜ TRƯỚC`;
+    }
+    if (diffDays === 1) return 'ĐĂNG HÔM QUA';
+    if (diffDays <= 30) return `ĐĂNG ${diffDays} NGÀY TRƯỚC`;
+    return `ĐĂNG NGÀY ${date.toLocaleDateString('vi-VN')}`;
+  };
 
   const images = product.imageUrls && product.imageUrls.length > 0 
     ? product.imageUrls 
@@ -183,7 +258,7 @@ const ProductDetail = () => {
                 className="w-full h-full object-contain"
               />
               <div className="absolute top-3 left-3 bg-[#007AFF] text-white font-label-sm text-xs font-bold px-2 py-1 rounded uppercase shadow-sm">
-                Đăng 2 ngày trước
+                {formatTimeAgo(product.bumpedAt || product.createdAt)}
               </div>
             </div>
             
@@ -255,6 +330,52 @@ const ProductDetail = () => {
                       </span>
                     </div>
                     <div className="text-sm text-on-surface mt-2">{rev.comment}</div>
+                    
+                    {/* Render images if any */}
+                    {rev.imageUrls && rev.imageUrls.length > 0 && (
+                      <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
+                        {rev.imageUrls.map((url, idx) => (
+                          <img key={idx} src={url} alt={`Review ${idx}`} className="w-20 h-20 object-cover rounded-lg border border-outline-variant/30 shadow-sm" />
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Hiển thị phần trả lời của người bán nếu có */}
+                    {rev.sellerReply && (
+                      <div className="mt-3 ml-8 p-3 bg-surface-container-lowest border-l-2 border-primary rounded-r-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="material-symbols-outlined text-[16px] text-primary">storefront</span>
+                          <span className="font-bold text-xs text-on-surface">Phản hồi từ người bán</span>
+                          <span className="text-[10px] text-on-surface-variant ml-auto">{rev.repliedAt ? new Date(rev.repliedAt).toLocaleDateString('vi-VN') : ''}</span>
+                        </div>
+                        <div className="text-sm text-on-surface-variant">{rev.sellerReply}</div>
+                      </div>
+                    )}
+                    
+                    {/* Form trả lời dành cho người bán (nếu chưa trả lời) */}
+                    {user?.isLoggedIn && user.userId === product.sellerId && !rev.sellerReply && (
+                      <div className="mt-2 ml-8">
+                        {replyingTo === rev.id ? (
+                          <div className="mt-2">
+                            <textarea 
+                              value={replyInput}
+                              onChange={(e) => setReplyInput(e.target.value)}
+                              placeholder="Nhập phản hồi cảm ơn khách hàng..."
+                              className="w-full px-3 py-2 text-sm rounded-lg border border-outline-variant focus:border-primary outline-none bg-surface resize-none mb-2"
+                              rows="2"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => handleSubmitReply(rev.id)} disabled={isSubmittingReply} className="px-4 py-1.5 bg-primary-container text-white text-xs font-bold rounded-lg hover:opacity-90 disabled:opacity-50">Gửi</button>
+                              <button onClick={() => setReplyingTo(null)} className="px-4 py-1.5 bg-surface-variant text-on-surface-variant text-xs font-bold rounded-lg hover:opacity-90">Hủy</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => setReplyingTo(rev.id)} className="text-primary text-xs font-bold hover:underline flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">reply</span> Trả lời
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -288,9 +409,40 @@ const ProductDetail = () => {
                     rows="3"
                     required
                   ></textarea>
+                  
+                  {/* Image Upload for Review */}
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-3 mb-2">
+                      {reviewImages.map((img, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-outline-variant shadow-sm">
+                          <img src={img} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeReviewImage(idx)}
+                            className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-red-500 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">close</span>
+                          </button>
+                        </div>
+                      ))}
+                      {reviewImages.length < 5 && (
+                        <label className={`w-16 h-16 rounded-lg border border-dashed border-outline flex flex-col items-center justify-center cursor-pointer hover:bg-surface-variant transition-colors ${isUploadingReviewImages ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <input type="file" multiple accept="image/*" onChange={handleReviewImageUpload} className="hidden" />
+                          {isUploadingReviewImages ? (
+                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-primary text-[20px]">add_a_photo</span>
+                            </>
+                          )}
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={isSubmittingReview}
+                    disabled={isSubmittingReview || isUploadingReviewImages}
                     className="bg-primary text-white font-bold py-2 px-6 rounded-lg text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}

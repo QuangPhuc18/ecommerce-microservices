@@ -11,6 +11,12 @@ const ManagePosts = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Đang hiển thị');
+  
+  // Notification States
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = React.useRef(null);
 
   // Kiểm tra đăng nhập
   useEffect(() => {
@@ -67,6 +73,54 @@ const ManagePosts = () => {
     }
   }, [user]);
 
+  // Notifications logic
+  useEffect(() => {
+    let intervalId;
+    if (user?.userId) {
+      const fetchNotifications = () => {
+        api.get(`/notifications/user/${user.userId}/unread-count`)
+          .then(res => setUnreadCount(res.data))
+          .catch(err => console.error(err));
+          
+        api.get(`/notifications/user/${user.userId}`)
+          .then(res => setNotifications(res.data))
+          .catch(err => console.error(err));
+      };
+      
+      fetchNotifications();
+      intervalId = setInterval(fetchNotifications, 5000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      try {
+        await api.put(`/notifications/${notification.id}/read`);
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true, isRead: true } : n));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (notification.type === 'CHAT') {
+      navigate('/chat');
+      setShowNotifications(false);
+    }
+  };
+
   // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return '20/05/2024';
@@ -101,38 +155,7 @@ const ManagePosts = () => {
   });
 
   return (
-    <div className="bg-[#fcf9f8] min-h-screen font-sans text-[#1c1b1b] animate-fade-in">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-50 flex justify-between items-center px-6 h-16 bg-white shadow-sm border-b border-gray-100">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="text-2xl font-bold text-[#f26522]">ĐồCũ</Link>
-          <nav className="hidden md:flex gap-6 items-center">
-            <Link to="#" className="text-gray-600 hover:text-[#f26522] font-semibold text-sm transition-colors">Khám phá</Link>
-            <Link to="/categories" className="text-gray-600 hover:text-[#f26522] font-semibold text-sm transition-colors">Danh mục</Link>
-            <span className="text-[#f26522] font-bold text-sm border-b-2 border-[#f26522] pb-1">Tin đăng</span>
-            <Link to="#" className="text-gray-600 hover:text-[#f26522] font-semibold text-sm transition-colors">Hỗ trợ</Link>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative hidden md:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-            <input className="w-64 pl-9 pr-4 py-1.5 bg-gray-100 rounded-full border-none text-sm outline-none focus:ring-1 focus:ring-[#f26522]" placeholder="Tìm kiếm tin đăng..." type="text"/>
-          </div>
-          <span className="material-symbols-outlined text-gray-500 cursor-pointer hover:text-[#f26522]">storefront</span>
-          <span className="material-symbols-outlined text-gray-500 cursor-pointer hover:text-[#f26522]">notifications</span>
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 cursor-pointer">
-            {userProfile?.avatarUrl ? (
-              <img src={userProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="material-symbols-outlined text-gray-400 bg-gray-100 w-full h-full flex items-center justify-center">person</span>
-            )}
-          </div>
-          <Link to="/post" className="bg-[#f26522] text-white font-bold py-1.5 px-4 rounded-full text-sm hover:bg-[#d65a1e] transition-colors shadow-sm">
-            Đăng tin
-          </Link>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-[#f8f9fa]">
       <main className="max-w-[1200px] mx-auto flex gap-6 pt-6 px-4 pb-12">
         {/* Sidebar */}
         <aside className="w-64 hidden md:flex flex-col bg-transparent">

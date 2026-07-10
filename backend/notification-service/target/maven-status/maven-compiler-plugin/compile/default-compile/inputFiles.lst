@@ -1,4 +1,5 @@
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\config\RabbitMQConfig.java
+D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\config\RestTemplateConfig.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\config\WebSocketConfig.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\controller\NotificationController.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\entity\Notification.java

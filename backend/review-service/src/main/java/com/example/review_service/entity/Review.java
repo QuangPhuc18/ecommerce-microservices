@@ -37,6 +37,17 @@ public class Review {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "seller_reply", columnDefinition = "TEXT")
+    private String sellerReply;
+
+    @Column(name = "replied_at")
+    private LocalDateTime repliedAt;
+
+    @ElementCollection
+    @CollectionTable(name = "review_images", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "image_url")
+    private java.util.List<String> imageUrls;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
