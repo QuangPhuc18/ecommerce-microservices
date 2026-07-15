@@ -4,6 +4,7 @@ import api from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BottomNav from '../components/BottomNav';
+import locations from '../data/locations.json';
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -13,6 +14,7 @@ const Search = () => {
   const query = useQuery();
   const navigate = useNavigate();
   const initialCategory = query.get('category') || '';
+  const initialSubCategory = query.get('subCategory') || '';
   const initialMinPrice = query.get('minPrice') || '';
   const initialMaxPrice = query.get('maxPrice') || '';
   const initialLocation = query.get('location') || '';
@@ -23,13 +25,18 @@ const Search = () => {
   const [favorites, setFavorites] = useState([]);
   
   const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [activeSubCategory, setActiveSubCategory] = useState(initialSubCategory);
   const [tempCategory, setTempCategory] = useState(initialCategory);
+  const [tempSubCategory, setTempSubCategory] = useState(initialSubCategory);
   const [tempMinPrice, setTempMinPrice] = useState(initialMinPrice);
   const [tempMaxPrice, setTempMaxPrice] = useState(initialMaxPrice);
   const [tempLocation, setTempLocation] = useState(initialLocation);
+  
+  const [dbCategories, setDbCategories] = useState({ main: [], sub: [] });
 
   const [appliedFilters, setAppliedFilters] = useState({
     category: initialCategory,
+    subCategory: initialSubCategory,
     minPrice: initialMinPrice,
     maxPrice: initialMaxPrice,
     location: initialLocation,
@@ -38,12 +45,15 @@ const Search = () => {
 
   useEffect(() => {
     setActiveCategory(query.get('category') || '');
+    setActiveSubCategory(query.get('subCategory') || '');
     setTempCategory(query.get('category') || '');
+    setTempSubCategory(query.get('subCategory') || '');
     setTempMinPrice(query.get('minPrice') || '');
     setTempMaxPrice(query.get('maxPrice') || '');
     setTempLocation(query.get('location') || '');
     setAppliedFilters({
       category: query.get('category') || '',
+      subCategory: query.get('subCategory') || '',
       minPrice: query.get('minPrice') || '',
       maxPrice: query.get('maxPrice') || '',
       location: query.get('location') || '',
@@ -57,6 +67,7 @@ const Search = () => {
       try {
         const params = { size: 100 };
         if (appliedFilters.category) params.category = appliedFilters.category;
+        if (appliedFilters.subCategory) params.subCategory = appliedFilters.subCategory;
         if (appliedFilters.minPrice) params.minPrice = appliedFilters.minPrice;
         if (appliedFilters.maxPrice) params.maxPrice = appliedFilters.maxPrice;
         if (appliedFilters.location) params.location = appliedFilters.location;
@@ -80,7 +91,22 @@ const Search = () => {
         setLoading(false);
       }
     };
+    
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get('/products/categories');
+        const all = res.data || [];
+        setDbCategories({
+          main: all.filter(c => c.parentId == null),
+          sub: all.filter(c => c.parentId != null)
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    
     fetchProducts();
+    fetchCategories();
   }, [appliedFilters]);
 
   const handleToggleFavorite = async (e, productId) => {
@@ -102,6 +128,7 @@ const Search = () => {
   const handleApplyFilter = () => {
     const params = new URLSearchParams();
     if (tempCategory) params.set('category', tempCategory);
+    if (tempSubCategory) params.set('subCategory', tempSubCategory);
     if (tempMinPrice) params.set('minPrice', tempMinPrice);
     if (tempMaxPrice) params.set('maxPrice', tempMaxPrice);
     if (tempLocation) params.set('location', tempLocation);
@@ -111,12 +138,15 @@ const Search = () => {
 
   const handleClearFilter = () => {
     setActiveCategory('');
+    setActiveSubCategory('');
     setTempCategory('');
+    setTempSubCategory('');
     setTempMinPrice('');
     setTempMaxPrice('');
     setTempLocation('');
     setAppliedFilters({
       category: '',
+      subCategory: '',
       minPrice: '',
       maxPrice: '',
       location: ''
@@ -148,6 +178,14 @@ const Search = () => {
                 </div>
               </li>
             )}
+            {activeSubCategory && (
+              <li>
+                <div className="flex items-center">
+                  <span className="material-symbols-outlined text-sm mx-1">chevron_right</span>
+                  <span aria-current="page" className="text-on-surface">{activeSubCategory}</span>
+                </div>
+              </li>
+            )}
           </ol>
         </nav>
         
@@ -163,21 +201,64 @@ const Search = () => {
             
             {/* Filter: Danh mục */}
             <div className="mb-lg border-b border-surface-variant pb-md">
-              <h3 className="font-label-sm text-label-sm text-on-surface mb-sm uppercase tracking-wider flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[16px]">category</span> Danh mục
+              <h3 className="font-bold text-on-surface mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary-container">category</span>
+                Danh mục chính
               </h3>
-              <div className="flex flex-col gap-xs font-body-md text-body-md max-h-48 overflow-y-auto custom-scrollbar">
-                <label className="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
-                  <input type="radio" name="category" value="" checked={tempCategory === ''} onChange={() => setTempCategory('')} className="rounded-full border-outline-variant text-primary-container focus:ring-primary-container"/> 
-                  <span className="text-on-surface">Tất cả danh mục</span>
+              <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input type="radio" name="category" value="" checked={tempCategory === ''} onChange={() => { setTempCategory(''); setTempSubCategory(''); }} className="w-4 h-4 text-primary-container border-outline-variant focus:ring-primary-container" />
+                  <span className={`text-[15px] group-hover:text-primary-container transition-colors ${tempCategory === '' ? 'text-primary-container font-medium' : 'text-on-surface-variant'}`}>Tất cả danh mục</span>
                 </label>
-                {["Xe cộ", "Điện tử", "Đồ gia dụng", "Nội thất", "Thời trang", "Mẹ & bé", "Thể thao", "Sách", "Thú cưng", "Đồ chơi", "Nhà đất", "Khác"].map(cat => (
-                  <label key={cat} className="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
-                    <input type="radio" name="category" value={cat} checked={tempCategory === cat} onChange={() => setTempCategory(cat)} className="rounded-full border-outline-variant text-primary-container focus:ring-primary-container"/> 
-                    <span className="text-on-surface">{cat}</span>
+                {dbCategories.main.map((cat, idx) => (
+                  <label key={cat.id || idx} className="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="category" value={cat.name} checked={tempCategory === cat.name} onChange={(e) => { setTempCategory(e.target.value); setTempSubCategory(''); }} className="w-4 h-4 text-primary-container border-outline-variant focus:ring-primary-container" />
+                    <span className={`text-[15px] group-hover:text-primary-container transition-colors ${tempCategory === cat.name ? 'text-primary-container font-medium' : 'text-on-surface-variant'}`}>{cat.name}</span>
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* Filter: Danh mục con */}
+            {tempCategory && (
+              <div className="mb-lg border-b border-surface-variant pb-md">
+                <h3 className="font-bold text-on-surface mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary-container">arrow_drop_down_circle</span>
+                  Danh mục con
+                </h3>
+                <div className="flex flex-col gap-2 pl-2 border-l-2 border-outline-variant/30">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="subCategory" value="" checked={tempSubCategory === ''} onChange={() => setTempSubCategory('')} className="w-4 h-4 text-primary-container border-outline-variant focus:ring-primary-container" />
+                    <span className={`text-[15px] group-hover:text-primary-container transition-colors ${tempSubCategory === '' ? 'text-primary-container font-medium' : 'text-on-surface-variant'}`}>Tất cả</span>
+                  </label>
+                  {dbCategories.sub.filter(s => {
+                    const m = dbCategories.main.find(x => x.name === tempCategory);
+                    return m && s.parentId === m.id;
+                  }).map((sub, idx) => (
+                    <label key={sub.id || idx} className="flex items-center gap-3 cursor-pointer group">
+                      <input type="radio" name="subCategory" value={sub.name} checked={tempSubCategory === sub.name} onChange={(e) => setTempSubCategory(e.target.value)} className="w-4 h-4 text-primary-container border-outline-variant focus:ring-primary-container" />
+                      <span className={`text-[15px] group-hover:text-primary-container transition-colors ${tempSubCategory === sub.name ? 'text-primary-container font-medium' : 'text-on-surface-variant'}`}>{sub.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Filter: Khu vực (Tỉnh/Thành) */}
+            <div className="mb-lg border-b border-surface-variant pb-md">
+              <h3 className="font-label-sm text-label-sm text-on-surface mb-sm uppercase tracking-wider flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[16px]">location_on</span> Khu vực
+              </h3>
+              <select 
+                value={tempLocation} 
+                onChange={(e) => setTempLocation(e.target.value)} 
+                className="w-full px-3 py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm text-on-surface bg-surface"
+              >
+                <option value="">Toàn quốc</option>
+                {locations.map((loc, idx) => (
+                  <option key={idx} value={loc.name}>{loc.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Filter: Khoảng giá */}

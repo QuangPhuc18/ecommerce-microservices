@@ -31,6 +31,14 @@ public class RouteValidator {
                 if (request.getMethod().name().equals("GET") && request.getURI().getPath().startsWith("/media/images")) {
                     return false;
                 }
+                // Cho phép GET /users (xem thông tin người bán)
+                if (request.getMethod().name().equals("GET") && request.getURI().getPath().startsWith("/users")) {
+                    return false;
+                }
+                // Cho phép GET /reviews (xem đánh giá người bán)
+                if (request.getMethod().name().equals("GET") && request.getURI().getPath().startsWith("/reviews")) {
+                    return false;
+                }
                 return openApiEndpoints
                         .stream()
                         .noneMatch(uri -> request.getURI().getPath().contains(uri));

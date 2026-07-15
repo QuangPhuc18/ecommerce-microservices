@@ -23,6 +23,27 @@ public class RabbitMQListener {
     // Pattern to extract userId from message like "User 1 sent message to User 2 in room 3"
     private final Pattern pattern = Pattern.compile("User \\d+ sent message to User (\\d+) in room \\d+");
 
+    @RabbitListener(queues = RabbitMQConfig.USER_FOLLOWED_QUEUE)
+    public void receiveUserFollowedNotification(Map<String, Object> payload) {
+        log.info("Received user followed notification: {}", payload);
+        try {
+            Long followingId = null;
+            if (payload.get("followingId") instanceof Integer) {
+                followingId = ((Integer) payload.get("followingId")).longValue();
+            } else if (payload.get("followingId") instanceof Long) {
+                followingId = (Long) payload.get("followingId");
+            }
+            String followerName = (String) payload.get("followerName");
+            
+            if (followingId != null) {
+                String message = followerName + " đã bắt đầu theo dõi bạn.";
+                notificationService.createAndSendNotification(followingId, message, "NEW_FOLLOWER");
+            }
+        } catch (Exception e) {
+            log.error("Failed to process user followed notification", e);
+        }
+    }
+
     @RabbitListener(queues = RabbitMQConfig.CHAT_QUEUE)
     public void receiveChatNotification(String message) {
         log.info("Received chat notification: {}", message);

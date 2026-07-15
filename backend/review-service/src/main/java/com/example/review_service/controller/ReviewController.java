@@ -39,6 +39,20 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/product/{productId}")
+    public ResponseEntity<List<Review>> getProductReviews(@PathVariable Long productId) {
+        return ResponseEntity.ok(reviewRepository.findByProductIdOrderByCreatedAtDesc(productId));
+    }
+
+    @GetMapping("/product/{productId}/rating")
+    public ResponseEntity<Map<String, Object>> getProductAverageRating(@PathVariable Long productId) {
+        Double avgRating = reviewRepository.getAverageRatingByProductId(productId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("productId", productId);
+        response.put("averageRating", avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{reviewId}/reply")
     public ResponseEntity<Review> replyToReview(@PathVariable Long reviewId, @RequestBody Map<String, String> payload) {
         Review review = reviewRepository.findById(reviewId)

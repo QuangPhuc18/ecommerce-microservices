@@ -14,11 +14,14 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    @Column(columnDefinition = "TEXT")
     private String description;
     private Double price;
     private Integer stock;
 
     private String category;
+    @Column(name = "sub_category")
+    private String subCategory;
     private String location;
     private String itemCondition; // NEW, USED
     private String status; // ACTIVE, SOLD

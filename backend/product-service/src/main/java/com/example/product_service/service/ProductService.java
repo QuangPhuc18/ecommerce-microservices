@@ -11,13 +11,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.example.product_service.config.RabbitMQConfig;
+
 @Service
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
+    private final RabbitTemplate rabbitTemplate;
 
-    public Page<Product> searchProducts(String keyword, String category, String location, String condition, String status, Double minPrice, Double maxPrice, Long sellerId, Pageable pageable) {
-        Specification<Product> spec = ProductSpecification.filterProducts(keyword, category, location, condition, status, minPrice, maxPrice, sellerId);
+    public Page<Product> searchProducts(String keyword, String category, String subCategory, String location, String condition, String status, Double minPrice, Double maxPrice, Long sellerId, Pageable pageable) {
+        Specification<Product> spec = ProductSpecification.filterProducts(keyword, category, subCategory, location, condition, status, minPrice, maxPrice, sellerId);
         return productRepository.findAll(spec, pageable);
     }
 
@@ -31,7 +35,16 @@ public class ProductService {
         if (product.getStatus() == null) {
             product.setStatus("AVAILABLE");
         }
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+        
+        try {
+            // Phát sự kiện có sản phẩm mới
+            rabbitTemplate.convertAndSend(RabbitMQConfig.PRODUCT_EXCHANGE, "product.created", savedProduct);
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi message RabbitMQ: " + e.getMessage());
+        }
+        
+        return savedProduct;
     }
 
     public Product updateProduct(Long id, Product updatedProduct) {
@@ -41,6 +54,7 @@ public class ProductService {
         product.setPrice(updatedProduct.getPrice());
         product.setItemCondition(updatedProduct.getItemCondition());
         product.setCategory(updatedProduct.getCategory());
+        product.setSubCategory(updatedProduct.getSubCategory());
         product.setLocation(updatedProduct.getLocation());
         product.setStatus(updatedProduct.getStatus());
         product.setApproved(updatedProduct.isApproved());

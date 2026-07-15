@@ -18,6 +18,8 @@ import AdminLayout from './components/AdminLayout';
 import AdminUsers from './pages/AdminUsers';
 import AdminCategories from './pages/AdminCategories';
 import AdminProducts from './pages/AdminProducts';
+import AdminBanners from './pages/AdminBanners';
+import AdminSettings from './pages/AdminSettings';
 import UserSettings from './pages/UserSettings';
 
 function App() {
@@ -58,6 +60,8 @@ function App() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="products" element={<AdminProducts />} />
+            <Route path="banners" element={<AdminBanners />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Routes>
       </Router>

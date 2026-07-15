@@ -3,6 +3,7 @@ D:\ecommerce-microservices\backend\notification-service\src\main\java\com\exampl
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\config\WebSocketConfig.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\controller\NotificationController.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\entity\Notification.java
+D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\listener\ProductEventListener.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\listener\RabbitMQListener.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\NotificationServiceApplication.java
 D:\ecommerce-microservices\backend\notification-service\src\main\java\com\example\notification_service\repository\NotificationRepository.java

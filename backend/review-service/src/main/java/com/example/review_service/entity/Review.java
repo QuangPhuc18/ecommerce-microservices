@@ -25,6 +25,9 @@ public class Review {
     @Column(name = "reviewed_user_id", nullable = false)
     private Long reviewedUserId;
 
+    @Column(name = "product_id")
+    private Long productId;
+
     @Column(name = "order_id")
     private Long orderId;
 

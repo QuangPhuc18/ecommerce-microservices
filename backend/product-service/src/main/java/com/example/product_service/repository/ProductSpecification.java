@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ProductSpecification {
 
-    public static Specification<Product> filterProducts(String keyword, String category, String location, String condition, String status, Double minPrice, Double maxPrice, Long sellerId) {
+    public static Specification<Product> filterProducts(String keyword, String category, String subCategory, String location, String condition, String status, Double minPrice, Double maxPrice, Long sellerId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -19,6 +19,9 @@ public class ProductSpecification {
             }
             if (StringUtils.hasText(category)) {
                 predicates.add(cb.equal(root.get("category"), category));
+            }
+            if (StringUtils.hasText(subCategory)) {
+                predicates.add(cb.equal(root.get("subCategory"), subCategory));
             }
             if (StringUtils.hasText(location)) {
                 predicates.add(cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase() + "%"));

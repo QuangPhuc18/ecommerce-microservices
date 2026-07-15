@@ -29,6 +29,7 @@ public class ProductController {
     public ResponseEntity<Page<Product>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String subCategory,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String condition,
             @RequestParam(required = false) String status,
@@ -38,7 +39,7 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "bumpedAt"));
-        return ResponseEntity.ok(productService.searchProducts(keyword, category, location, condition, status, minPrice, maxPrice, sellerId, pageable));
+        return ResponseEntity.ok(productService.searchProducts(keyword, category, subCategory, location, condition, status, minPrice, maxPrice, sellerId, pageable));
     }
 
     @GetMapping("/{id}")

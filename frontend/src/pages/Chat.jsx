@@ -287,14 +287,14 @@ const Chat = () => {
               <span className="font-label-sm text-label-sm">Hộp thư</span>
             </Link>
             <Link to="#" className="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all">
-              <span className="material-symbols-outlined">shopping_bag</span>
-              <span className="font-label-sm text-label-sm">Mua hàng</span>
+              <span className="material-symbols-outlined"></span>
+              <span className="font-label-sm text-label-sm">Đăng ký gói</span>
             </Link>
-            <Link to="#" className="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all">
+            {/* <Link to="#" className="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all">
               <span className="material-symbols-outlined">sell</span>
               <span className="font-label-sm text-label-sm">Bán hàng</span>
-            </Link>
-            <Link to="#" className="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all">
+            </Link> */}
+            <Link to="/saved-posts" className="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all">
               <span className="material-symbols-outlined">favorite</span>
               <span className="font-label-sm text-label-sm">Yêu thích</span>
             </Link>

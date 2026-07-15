@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
+import VipPackages from '../components/VipPackages';
 
 const ManagePosts = () => {
   const { user, loading: authLoading, logout } = useContext(AuthContext);
@@ -11,12 +12,17 @@ const ManagePosts = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Đang hiển thị');
+  const [activeSidebarMenu, setActiveSidebarMenu] = useState('manage-posts');
   
   // Notification States
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = React.useRef(null);
+
+  // Followers State
+  const [followers, setFollowers] = useState([]);
+  const [followersLoading, setFollowersLoading] = useState(false);
 
   // Kiểm tra đăng nhập
   useEffect(() => {
@@ -70,6 +76,15 @@ const ManagePosts = () => {
       api.get(`/users/${user.userId}`)
          .then(res => setUserProfile(res.data))
          .catch(err => console.error(err));
+         
+      // Fetch followers
+      setFollowersLoading(true);
+      api.get(`/follows/followers/${user.userId}`)
+         .then(res => {
+           setFollowers(res.data);
+         })
+         .catch(err => console.error(err))
+         .finally(() => setFollowersLoading(false));
     }
   }, [user]);
 
@@ -178,10 +193,23 @@ const ManagePosts = () => {
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-semibold">Tổng quan</span>
             </Link>
-            <Link to="/manage-posts" className="flex items-center gap-3 px-4 py-2.5 bg-[#feb700] text-[#6b4b00] rounded-xl font-bold transition-transform shadow-sm">
+            <button 
+              onClick={() => setActiveSidebarMenu('manage-posts')} 
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-transform text-left ${activeSidebarMenu === 'manage-posts' ? 'bg-[#feb700] text-[#6b4b00] font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'}`}
+            >
               <span className="material-symbols-outlined text-[20px]">list_alt</span>
               <span className="text-sm">Quản lý tin đăng</span>
-            </Link>
+            </button>
+            <button 
+              onClick={() => setActiveSidebarMenu('followers')} 
+              className={`flex items-center justify-between px-4 py-2.5 rounded-xl transition-transform text-left ${activeSidebarMenu === 'followers' ? 'bg-[#feb700] text-[#6b4b00] font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[20px]">group</span>
+                <span className="text-sm">Người theo dõi</span>
+              </div>
+              <span className="bg-gray-200 text-gray-700 text-xs py-0.5 px-2 rounded-full">{followers.length}</span>
+            </button>
             <Link to="/saved-posts" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
               <span className="material-symbols-outlined text-[20px]">favorite</span>
               <span className="text-sm font-semibold">Tin đã lưu</span>
@@ -197,7 +225,10 @@ const ManagePosts = () => {
           </nav>
 
           <div className="mt-4 px-4">
-             <button className="w-full py-2.5 bg-[#6b4b00] text-[#feb700] rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#5e4200] transition-colors shadow-md">
+             <button 
+               onClick={() => setActiveSidebarMenu('vip')}
+               className={`w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-colors ${activeSidebarMenu === 'vip' ? 'bg-[#5e4200] text-[#feb700]' : 'bg-[#6b4b00] text-[#feb700] hover:bg-[#5e4200]'}`}
+             >
                <span className="material-symbols-outlined text-[18px]">workspace_premium</span> Nâng cấp gói VIP
              </button>
           </div>
@@ -215,8 +246,9 @@ const ManagePosts = () => {
         </aside>
 
         {/* Main Content */}
-        <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
-          <h1 className="text-2xl font-bold mb-6">Quản lý tin đăng</h1>
+        {activeSidebarMenu === 'manage-posts' ? (
+          <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
+            <h1 className="text-2xl font-bold mb-6">Quản lý tin đăng</h1>
           
           {/* Tabs */}
           <div className="flex border-b border-gray-200 mb-6 overflow-x-auto hide-scrollbar">
@@ -364,6 +396,59 @@ const ManagePosts = () => {
              </div>
           )}
         </section>
+        ) : activeSidebarMenu === 'followers' ? (
+          <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
+            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+              <h1 className="text-2xl font-bold text-[#1c1b1b]">Người theo dõi bạn</h1>
+              <div className="bg-[#fff4e5] text-[#a63b00] px-4 py-2 rounded-full font-bold text-sm">
+                Tổng cộng: {followers.length} người
+              </div>
+            </div>
+            
+            {followersLoading ? (
+              <div className="py-10 text-center text-gray-500">Đang tải danh sách...</div>
+            ) : followers.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">group_off</span>
+                <p className="text-gray-500 text-lg font-medium">Chưa có ai theo dõi bạn</p>
+                <p className="text-gray-400 text-sm mt-2">Hãy đăng nhiều sản phẩm chất lượng để thu hút người theo dõi nhé!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {followers.map(follower => (
+                  <div key={follower.followerId} className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:shadow-md hover:border-[#feb700] transition-all bg-white cursor-pointer" onClick={() => navigate(`/seller/${follower.followerId}`)}>
+                    <div className="w-14 h-14 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0">
+                      {follower.avatarUrl ? (
+                        <img src={follower.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <span className="material-symbols-outlined text-2xl">person</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-[#1c1b1b] text-base truncate">{follower.name || follower.email?.split('@')[0] || 'Tài khoản ẩn danh'}</h4>
+                      <p className="text-sm text-gray-500 truncate mt-0.5">{follower.email}</p>
+                    </div>
+                    <button className="w-8 h-8 rounded-full bg-gray-50 hover:bg-[#fff4e5] text-gray-400 hover:text-[#a63b00] flex items-center justify-center transition-colors">
+                      <span className="material-symbols-outlined text-sm">arrow_forward_ios</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : activeSidebarMenu === 'vip' ? (
+          <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
+            <h1 className="text-2xl font-bold mb-6">Nâng cấp gói VIP</h1>
+            <VipPackages />
+          </section>
+        ) : (
+          <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center min-h-[600px] text-gray-500">
+            <span className="material-symbols-outlined text-6xl mb-4 opacity-50">construction</span>
+            <p className="text-lg">Tính năng đang được phát triển</p>
+          </section>
+        )}
       </main>
       
       <style>{`

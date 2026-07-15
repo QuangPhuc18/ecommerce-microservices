@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../services/api';
+import { AuthContext } from '../contexts/AuthContext';
 
 const SellerProfile = () => {
   const { id } = useParams();
@@ -10,7 +11,11 @@ const SellerProfile = () => {
   const [soldProducts, setSoldProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [reviewers, setReviewers] = useState({});
+  const [averageRating, setAverageRating] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { user } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchSellerData = async () => {
@@ -30,6 +35,18 @@ const SellerProfile = () => {
         const revRes = await api.get(`/reviews/user/${id}`);
         const fetchedReviews = revRes.data || [];
         setReviews(fetchedReviews);
+        
+        try {
+          const ratingRes = await api.get(`/reviews/user/${id}/rating`);
+          setAverageRating(ratingRes.data.averageRating || 0);
+        } catch (e) {}
+        
+        try {
+          const followersRes = await api.get(`/follows/followers/${id}`);
+          setFollowersCount(followersRes.data ? followersRes.data.length : 0);
+        } catch (e) {
+          console.error("Lỗi lấy followers:", e);
+        }
 
         // Fetch tên reviewers
         const reviewerIds = [...new Set(fetchedReviews.map(r => r.reviewerId))];
@@ -50,10 +67,50 @@ const SellerProfile = () => {
       }
     };
     
-    if (id) {
-      fetchSellerData();
-    }
-  }, [id]);
+      if (id) {
+        fetchSellerData();
+      }
+    }, [id]);
+  
+    useEffect(() => {
+      const checkFollow = async () => {
+        if (user?.isLoggedIn && id) {
+          try {
+            const res = await api.get(`/follows/check?followerId=${user.userId}&followingId=${id}`);
+            setIsFollowing(res.data.followed);
+          } catch (e) {
+            console.error("Lỗi kiểm tra follow:", e);
+          }
+        }
+      };
+      checkFollow();
+    }, [id, user]);
+
+    const handleToggleFollow = async () => {
+      if (!user?.isLoggedIn) {
+        alert("Vui lòng đăng nhập để theo dõi người bán!");
+        return;
+      }
+      if (user.userId === Number(id)) {
+        alert("Bạn không thể tự theo dõi chính mình!");
+        return;
+      }
+      try {
+        const res = await api.post('/follows', {
+          followerId: user.userId,
+          followingId: id
+        });
+        setIsFollowing(res.data.followed);
+        if (res.data.followed) {
+           setFollowersCount(prev => prev + 1);
+        } else {
+           setFollowersCount(prev => Math.max(0, prev - 1));
+        }
+      } catch (err) {
+        console.error("Lỗi khi theo dõi:", err);
+        alert(err.response?.data || "Có lỗi xảy ra khi theo dõi");
+      }
+    };
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -102,19 +159,15 @@ const SellerProfile = () => {
             <div className="flex items-center justify-center md:justify-start gap-4 flex-wrap text-gray-500 text-sm">
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[#feb700] text-[18px]" style={{fontVariationSettings: "'FILL' 1"}}>star</span>
-                <span className="font-bold text-[#1c1b1b]">4.5</span>
-                <span>(15 đánh giá)</span>
+                <span className="font-bold text-[#1c1b1b]">{averageRating > 0 ? averageRating.toFixed(1) : 'Chưa có'}</span>
+                <span>({reviews.length} đánh giá)</span>
               </div>
-              <div className="w-1 h-1 rounded-full bg-gray-300 hidden md:block"></div>
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                <span>Tham gia từ tháng 3/2022</span>
-              </div>
-              <div className="w-1 h-1 rounded-full bg-gray-300 hidden md:block"></div>
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">schedule</span>
-                <span>Phản hồi trong vài giờ</span>
-              </div>
+              <div className="flex items-center gap-6 mt-4 md:mt-2 text-sm text-on-surface-variant flex-wrap">
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">shopping_bag</span> Đang bán: {products.length}</span>
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">check_circle</span> Đã bán: {soldProducts.length}</span>
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">group</span> Theo dõi: {followersCount}</span>
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">star</span> {averageRating.toFixed(1)}/5 Đánh giá</span>
+          </div>
             </div>
           </div>
         </div>
@@ -123,9 +176,18 @@ const SellerProfile = () => {
             <span className="material-symbols-outlined text-[18px]">chat</span>
             Chat ngay
           </Link>
-          <button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 border border-[#f26522] text-[#f26522] bg-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#fff3eb] transition-colors shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Theo dõi
+          <button 
+            onClick={handleToggleFollow}
+            className={`flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm ${
+              isFollowing 
+                ? 'bg-surface-variant text-on-surface-variant border border-outline hover:bg-surface-container' 
+                : 'border border-[#f26522] text-[#f26522] bg-white hover:bg-[#fff3eb]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {isFollowing ? 'check' : 'person_add'}
+            </span>
+            {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
           </button>
         </div>
       </section>

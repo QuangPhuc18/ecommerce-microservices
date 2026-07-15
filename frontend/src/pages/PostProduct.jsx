@@ -2,23 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Camera, MapPin, Tag, Image as ImageIcon, X } from 'lucide-react';
-
-const extendedCategories = [
-  { id: 'Xe cộ', name: 'Xe cộ', icon: 'directions_car' },
-  { id: 'Điện tử', name: 'Đồ điện tử', icon: 'smartphone' },
-  { id: 'Nhà đất', name: 'Bất động sản', icon: 'home_work' },
-  { id: 'Thời trang', name: 'Thời trang', icon: 'checkroom' },
-  { id: 'Thú cưng', name: 'Thú cưng', icon: 'pets' },
-  { id: 'Nội thất', name: 'Nội thất', icon: 'chair' },
-  { id: 'Đồ gia dụng', name: 'Đồ gia dụng', icon: 'kitchen' },
-  { id: 'Việc làm', name: 'Việc làm', icon: 'work' },
-  { id: 'Dịch vụ', name: 'Dịch vụ', icon: 'build' },
-  { id: 'Mẹ và bé', name: 'Mẹ và bé', icon: 'child_care' },
-  { id: 'Thể thao', name: 'Thể thao', icon: 'sports_soccer' },
-  { id: 'Xe đạp', name: 'Xe đạp', icon: 'pedal_bike' },
-  { id: 'Đồ ăn', name: 'Thực phẩm', icon: 'restaurant' },
-  { id: 'Sách', name: 'Sách, VPP', icon: 'menu_book' }
-];
+import locations from '../data/locations.json';
 
 const PostProduct = () => {
   const navigate = useNavigate();
@@ -30,9 +14,12 @@ const PostProduct = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [dbCategories, setDbCategories] = useState({ main: [], sub: [] });
+  const [availableDistricts, setAvailableDistricts] = useState([]);
   
   const [formData, setFormData] = useState({
     category: '',
+    subCategory: '',
     needType: 'sell',
     sellerType: 'personal',
     name: '',
@@ -57,6 +44,20 @@ const PostProduct = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get('/products/categories');
+        const all = res.data || [];
+        setDbCategories({
+          main: all.filter(c => c.parentId == null),
+          sub: all.filter(c => c.parentId != null)
+        });
+      } catch (err) {
+        console.error('Lỗi tải danh mục', err);
+      }
+    };
+    fetchCategories();
+
     if (editId) {
       const fetchProduct = async () => {
         try {
@@ -80,7 +81,7 @@ const PostProduct = () => {
           }
 
           setFormData({
-            category: p.category || '', needType: 'sell', sellerType: 'personal',
+            category: p.category || '', subCategory: p.subCategory || '', needType: 'sell', sellerType: 'personal',
             name: p.name || '', description: p.description || '', price: p.price || '', stock: p.stock || 1,
             itemCondition: p.itemCondition || 'USED', location: p.location || '',
             city, district, address, phone: p.phone || '0901234567', showPhone: true,
@@ -98,13 +99,42 @@ const PostProduct = () => {
     }
   }, [editId, navigate]);
 
+  useEffect(() => {
+    if (formData.city) {
+      const cityObj = locations.find(c => c.name === formData.city);
+      if (cityObj) {
+        setAvailableDistricts(cityObj.districts);
+      } else {
+        setAvailableDistricts([]);
+      }
+    } else {
+      setAvailableDistricts([]);
+    }
+  }, [formData.city]);
+
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
+  const [selectedMainCategory, setSelectedMainCategory] = useState(null);
+
   const handleSelectCategory = (catId) => {
-    setFormData({ ...formData, category: catId });
+    const mainCat = dbCategories.main.find(c => c.id === catId || c.name === catId);
+    const mainCatId = mainCat ? mainCat.id : null;
+    const hasSubs = dbCategories.sub.some(s => s.parentId === mainCatId);
+    
+    if (hasSubs) {
+      setSelectedMainCategory(mainCatId);
+    } else {
+      setFormData({ ...formData, category: mainCat ? mainCat.name : catId, subCategory: '' });
+      setStep(2);
+    }
+  };
+
+  const handleSelectSubCategory = (subCat) => {
+    const mainCat = dbCategories.main.find(c => c.id === selectedMainCategory);
+    setFormData({ ...formData, category: mainCat ? mainCat.name : '', subCategory: subCat });
     setStep(2);
   };
 
@@ -179,6 +209,7 @@ const PostProduct = () => {
         price: parseFloat(formData.price),
         stock: 1,
         category: formData.category,
+        subCategory: formData.subCategory,
         location: fullLocation || 'Toàn quốc',
         itemCondition: formData.itemCondition,
         status: 'PENDING',
@@ -221,24 +252,58 @@ const PostProduct = () => {
           <span className="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-on-surface-variant">search</span>
           <input className="w-full pl-12 pr-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow" placeholder="Tìm danh mục (VD: Điện thoại, Xe máy...)" type="text" />
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {(showAllCategories ? extendedCategories : [...extendedCategories.slice(0, 7), { id: 'Khác', name: 'Khác', icon: 'more_horiz', isMoreBtn: true }]).map((cat) => (
-            <button 
-              key={cat.id} 
-              onClick={() => {
-                if (cat.isMoreBtn) setShowAllCategories(true);
-                else handleSelectCategory(cat.name);
-              }} 
-              className="flex flex-col items-center justify-center p-6 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-primary-container hover:shadow-md transition-all duration-200 group text-center aspect-square"
-            >
-              <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center mb-4 group-hover:bg-primary-container/10 transition-colors">
-                <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary-container transition-colors">{cat.icon}</span>
-              </div>
-              <span className="font-headline-md text-[16px] font-bold text-on-surface group-hover:text-primary-container transition-colors line-clamp-2">{cat.name}</span>
-            </button>
-          ))}
-        </div>
+        {!selectedMainCategory ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {(showAllCategories ? dbCategories.main : [...dbCategories.main.slice(0, 7), { id: 'Khác', name: 'Khác', iconName: 'more_horiz', isMoreBtn: true }]).map((cat, idx) => (
+                <button 
+                  key={cat.id || idx} 
+                  onClick={() => {
+                    if (cat.isMoreBtn) setShowAllCategories(true);
+                    else handleSelectCategory(cat.name);
+                  }} 
+                  className="flex flex-col items-center justify-center p-6 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-primary-container hover:shadow-md transition-all duration-200 group text-center aspect-square"
+                >
+                  <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center mb-4 group-hover:bg-primary-container/10 transition-colors">
+                    <span className="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary-container transition-colors">{cat.iconName}</span>
+                  </div>
+                  <span className="font-headline-md text-[16px] font-bold text-on-surface group-hover:text-primary-container transition-colors line-clamp-2">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+            {!showAllCategories && dbCategories.main.length > 7 && (
+              <button 
+                className="mt-6 w-full py-3 bg-surface-container-low hover:bg-surface-container text-primary font-label-lg font-bold rounded-full transition-colors flex items-center justify-center gap-2"
+                onClick={() => setShowAllCategories(true)}
+              >
+                Xem thêm danh mục <span className="material-symbols-outlined">expand_more</span>
+              </button>
+            )}
+          </>
+        ) : (
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+               <button onClick={() => setSelectedMainCategory(null)} className="p-2 bg-surface-container-low rounded-full hover:bg-outline-variant transition-colors">
+                  <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+               </button>
+               <h3 className="font-headline-md font-bold text-on-surface">
+                 Chọn chuyên mục: {dbCategories.main.find(c => c.id === selectedMainCategory)?.name}
+               </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {dbCategories.sub.filter(s => s.parentId === selectedMainCategory).map((sub) => (
+                 <button 
+                   key={sub.id}
+                   onClick={() => handleSelectSubCategory(sub.name)}
+                   className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-primary-container hover:shadow-md transition-all text-left"
+                 >
+                   <span className="font-bold text-on-surface">{sub.name}</span>
+                   <span className="material-symbols-outlined text-outline-variant">chevron_right</span>
+                 </button>
+               ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -398,14 +463,19 @@ const PostProduct = () => {
               <label className="block text-sm font-bold text-on-surface-variant mb-1">Tỉnh/Thành phố <span className="text-error">*</span></label>
               <select required name="city" value={formData.city} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-surface text-on-surface">
                 <option value="">Chọn Tỉnh/Thành phố</option>
-                <option value="Hà Nội">Hà Nội</option>
-                <option value="TP. HCM">TP. Hồ Chí Minh</option>
-                <option value="Đà Nẵng">Đà Nẵng</option>
+                {locations.map((loc, idx) => (
+                  <option key={idx} value={loc.name}>{loc.name}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-bold text-on-surface-variant mb-1">Quận/Huyện <span className="text-error">*</span></label>
-              <input required type="text" name="district" value={formData.district} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-surface text-on-surface" placeholder="VD: Quận 1" />
+              <select required name="district" value={formData.district} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-surface text-on-surface" disabled={!formData.city}>
+                <option value="">Chọn Quận/Huyện</option>
+                {availableDistricts.map((dist, idx) => (
+                  <option key={idx} value={dist}>{dist}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div>

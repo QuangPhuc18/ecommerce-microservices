@@ -2,32 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
-const categories = [
-    { name: "Xe cộ", icon: "directions_car" },
-    { name: "Điện tử", icon: "devices" },
-    { name: "Đồ gia dụng", icon: "kitchen" },
-    { name: "Nội thất", icon: "chair" },
-    { name: "Thời trang", icon: "checkroom" },
-    { name: "Mẹ & bé", icon: "child_care" },
-    { name: "Thể thao", icon: "sports_soccer" },
-    { name: "Sách", icon: "menu_book" },
-    { name: "Thú cưng", icon: "pets" },
-    { name: "Đồ chơi", icon: "toys" },
-    { name: "Nhà đất", icon: "apartment" },
-    { name: "Khác", icon: "more_horiz" }
-];
+import { MAIN_CATEGORIES, SUB_CATEGORIES } from '../data/categories';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProductsAndFavorites = async () => {
       try {
-        const [prodRes, favRes] = await Promise.all([
+        const [prodRes, favRes, catRes, bannerRes] = await Promise.all([
           api.get('/products'),
-          api.get('/favorites').catch(() => ({ data: [] }))
+          api.get('/favorites').catch(() => ({ data: [] })),
+          api.get('/products/categories').catch(() => ({ data: [] })),
+          api.get('/products/banners/active').catch(() => ({ data: [] }))
         ]);
         
         if (prodRes.data && prodRes.data.content) {
@@ -38,6 +29,14 @@ const Home = () => {
 
         if (Array.isArray(favRes.data)) {
           setFavorites(favRes.data.map(p => p.id));
+        }
+
+        if (Array.isArray(catRes.data)) {
+          setCategories(catRes.data.filter(c => c.parentId == null));
+        }
+
+        if (Array.isArray(bannerRes.data)) {
+          setBanners(bannerRes.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -75,25 +74,43 @@ const Home = () => {
 
   return (
     <main className="pt-24 pb-32 max-w-container-max mx-auto px-4 md:px-gutter">
-      {/* Promotional Banner */}
-      <section className="mt-md mb-xl">
-        <div className="w-full md:h-[300px] aspect-[2/1] md:aspect-auto rounded-xl overflow-hidden relative shadow-sm bg-cover bg-center bg-no-repeat"
-             style={{ 
-               backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuB25PzaTnuslP-SWIvA9l3Ft25YJr-KFKWqIFRM6Mh0RP6mNDfvyJS0CCGM_rlu5Mg8sM0gWK_n_bOKmJ10pEDoY-I5aHVFR5LJGY4LUk3gTXU0yflY9txNGJMaBj43aB67TTQjgn1Ws8kMbD9PUeN5ClWL_sO4x0ToLRL2ElRmbPZ9yxIF4Cgnjgu66hD8vhLBt_rmS5SW16lZ8ttLfH2G1y4pqnGVzG97BV97MqcmfmUDia8dP4ph')"
-             }}>
-          {/* Mobile fallback image */}
-          <img className="md:hidden w-full h-full object-cover" alt="Banner" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJHZRMSLY4qfcxFallEfPrO20EVP_eMq-b_b_--RX0QLV-J3qAeK2mJGIfYYCp2LOGAavL9AHp3BqLrohfrQkrztRlUYuyqYjul58IaZmD87rCX0424nwNRejw8N8_OnIQU8vJS8QU-Sf_PZfA_Oay7EYWXN7B4-rkAvkiccLl98PphtU7Y10Ary9dS_NKIVpmJw8-BH4LU1l2Mgep-5ttqSB7at4hbjJNBaTrvk5HsjpFY2HhFPX6"/>
-        </div>
-      </section>
+      {/* Promotional Banners */}
+      {banners.length > 0 && (
+        <section className="mt-md mb-xl">
+          <div className="w-full md:h-[390px] aspect-[2/1] md:aspect-auto rounded-xl overflow-hidden relative shadow-sm flex overflow-x-auto snap-x snap-mandatory hide-scrollbar">
+            {banners.map((banner, index) => (
+              <a 
+                key={banner.id || index} 
+                href={banner.targetUrl && banner.targetUrl !== '#' ? banner.targetUrl : undefined} 
+                target={banner.targetUrl && banner.targetUrl !== '#' ? "_blank" : "_self"}
+                rel="noopener noreferrer"
+                className="w-full flex-none snap-center"
+              >
+                <div 
+                  className="w-full h-full bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url('${banner.imageUrl}')` }}
+                />
+              </a>
+            ))}
+          </div>
+          {banners.length > 1 && (
+            <div className="flex justify-center mt-2 gap-2">
+              {banners.map((_, idx) => (
+                <div key={idx} className="w-2 h-2 rounded-full bg-outline-variant"></div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Categories */}
       <section className="mb-xl">
         <h2 className="font-headline-lg text-[20px] md:text-headline-lg font-bold mb-md text-on-surface">Khám phá danh mục</h2>
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-y-6 gap-x-4">
+        <div className="grid grid-cols-4 md:grid-cols-7 gap-y-6 gap-x-4">
           {categories.map((cat, idx) => (
-            <Link to={`/search?category=${cat.name}`} key={idx} className="flex flex-col items-center group cursor-pointer hover:-translate-y-1 transition-transform">
+            <Link to={`/search?category=${encodeURIComponent(cat.name)}`} key={cat.id || idx} className="flex flex-col items-center group cursor-pointer hover:-translate-y-1 transition-transform">
               <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface-container-low group-hover:bg-primary-fixed-dim transition-colors flex items-center justify-center mb-2 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] text-primary md:text-on-surface-variant group-hover:text-on-primary-fixed-variant">
-                  <span className="material-symbols-outlined text-2xl transition-colors">{cat.icon}</span>
+                  <span className="material-symbols-outlined text-2xl transition-colors">{cat.iconName}</span>
               </div>
               <span className="font-label-sm md:font-body-md text-label-sm md:text-body-md text-center text-on-surface md:text-on-surface-variant group-hover:text-primary transition-colors">{cat.name}</span>
             </Link>

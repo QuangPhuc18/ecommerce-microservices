@@ -37,7 +37,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/users/**
+            - Path=/users/**, /follows/**
 
         - id: chat-service
           uri: lb://chat-service

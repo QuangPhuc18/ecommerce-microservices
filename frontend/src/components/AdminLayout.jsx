@@ -27,6 +27,8 @@ const AdminLayout = () => {
     { path: '/admin/users', icon: <Users size={20} />, label: 'Quản lý Người dùng' },
     { path: '/admin/categories', icon: <List size={20} />, label: 'Quản lý Danh mục' },
     { path: '/admin/products', icon: <ShoppingBag size={20} />, label: 'Quản lý Sản phẩm' },
+    { path: '/admin/banners', icon: <LayoutDashboard size={20} />, label: 'Quản lý Banner' },
+    { path: '/admin/settings', icon: <Settings size={20} />, label: 'Cấu hình Website' },
   ];
 
   return (

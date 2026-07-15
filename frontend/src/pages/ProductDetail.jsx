@@ -17,6 +17,7 @@ const ProductDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewers, setReviewers] = useState({});
   const [averageRating, setAverageRating] = useState(0);
+  const [sellerTotalReviews, setSellerTotalReviews] = useState(0);
   const [ratingInput, setRatingInput] = useState(5);
   const [commentInput, setCommentInput] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -45,7 +46,12 @@ const ProductDetail = () => {
              } catch(e) {}
              
              try {
-                const revRes = await api.get(`/reviews/user/${res.data.sellerId}`);
+                const sellerRevRes = await api.get(`/reviews/user/${res.data.sellerId}`);
+                setSellerTotalReviews(sellerRevRes.data?.length || 0);
+             } catch(e) {}
+             
+             try {
+                const revRes = await api.get(`/reviews/product/${res.data.id}`);
                 setReviews(revRes.data || []);
                 const usersRes = await api.get(`/users`);
                 const userMap = {};
@@ -70,7 +76,7 @@ const ProductDetail = () => {
         // Fetch related products
         if (res.data.category) {
           try {
-            const relRes = await api.get(`/products?category=${encodeURIComponent(res.data.category)}&size=6`);
+            const relRes = await api.get(`/products?category=${encodeURIComponent(res.data.category)}&status=AVAILABLE&size=6`);
             const filtered = (relRes.data.content || []).filter(p => p.id !== parseInt(id)).slice(0, 5);
             setRelatedProducts(filtered);
           } catch(e) {}
@@ -138,6 +144,7 @@ const ProductDetail = () => {
       await api.post('/reviews', {
         reviewerId: user.userId,
         reviewedUserId: product.sellerId,
+        productId: product.id,
         orderId: null,
         rating: ratingInput,
         comment: commentInput,
@@ -149,10 +156,12 @@ const ProductDetail = () => {
       setRatingInput(5);
       setReviewImages([]);
       
-      const revRes = await api.get(`/reviews/user/${product.sellerId}`);
+      const revRes = await api.get(`/reviews/product/${product.id}`);
       setReviews(revRes.data || []);
       const ratingRes = await api.get(`/reviews/user/${product.sellerId}/rating`);
       setAverageRating(ratingRes.data.averageRating || 0);
+      const sellerRevRes = await api.get(`/reviews/user/${product.sellerId}`);
+      setSellerTotalReviews(sellerRevRes.data?.length || 0);
     } catch (err) {
       console.error(err);
       alert("Có lỗi khi đăng đánh giá.");
@@ -169,7 +178,7 @@ const ProductDetail = () => {
       alert("Đã gửi phản hồi!");
       setReplyingTo(null);
       setReplyInput('');
-      const revRes = await api.get(`/reviews/user/${product.sellerId}`);
+      const revRes = await api.get(`/reviews/product/${product.id}`);
       setReviews(revRes.data || []);
     } catch (err) {
       console.error(err);
@@ -250,6 +259,23 @@ const ProductDetail = () => {
 
   return (
     <main className="pt-24 pb-32 max-w-container-max mx-auto px-4 md:px-gutter">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-6 font-medium">
+        <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link>
+        {product.category && (
+          <>
+            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+            <Link to={`/?category=${encodeURIComponent(product.category)}`} className="hover:text-primary transition-colors">{product.category}</Link>
+          </>
+        )}
+        {product.subCategory && (
+          <>
+            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+            <Link to={`/?category=${encodeURIComponent(product.category)}&subCategory=${encodeURIComponent(product.subCategory)}`} className="hover:text-primary transition-colors">{product.subCategory}</Link>
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Cột trái: Ảnh và Mô tả */}
@@ -307,16 +333,16 @@ const ProductDetail = () => {
             )}
           </div>
 
-          {/* Đánh giá người bán */}
-          <div className="bg-surface rounded-xl shadow-sm p-6 border border-outline-variant/30">
-            <h2 className="font-headline-md font-bold text-on-surface mb-6 border-b border-outline-variant/30 pb-3">
-              Đánh giá người bán ({reviews.length})
-            </h2>
+          {/* Đánh giá bài viết */}
+          <div className="bg-surface p-4 md:p-6 rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/50">
+            <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
+              Đánh giá bài viết ({reviews.length})
+            </h3>
 
             {/* Danh sách review */}
             <div className="space-y-6 mb-8">
               {reviews.length === 0 ? (
-                <p className="text-on-surface-variant text-sm italic">Chưa có đánh giá nào cho người bán này.</p>
+                <p className="text-on-surface-variant text-sm italic">Chưa có đánh giá nào cho sản phẩm này.</p>
               ) : (
                 reviews.map(rev => (
                   <div key={rev.id} className="border-b border-outline-variant/20 pb-4 last:border-0">
@@ -497,9 +523,15 @@ const ProductDetail = () => {
                 <span className="material-symbols-outlined text-[20px]">chat</span>
                 Chat ngay
               </button>
-              <button className="border border-primary text-primary bg-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors">
+              <button onClick={() => {
+                if (!user?.isLoggedIn) {
+                  alert("Vui lòng đăng nhập để xem đầy đủ số điện thoại!");
+                } else {
+                  window.location.href = `tel:${seller?.phone || '0901234567'}`;
+                }
+              }} className="border border-primary text-primary bg-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">call</span>
-                Gọi điện
+                {user?.isLoggedIn ? (seller?.phone || '0901234567') : ((seller?.phone || '0901234567').slice(0, -4) + '****')}
               </button>
             </div>
           </div>
@@ -511,7 +543,7 @@ const ProductDetail = () => {
               <div>
                 <div className="font-bold text-on-surface text-sm mb-0.5">{seller ? (seller.name || seller.email?.split('@')[0]) : "Người bán ẩn danh"}</div>
                 <div className="flex items-center text-[11px] text-on-surface-variant mb-0.5">
-                  <span className="text-[#FFB800] mr-1">★</span> {averageRating > 0 ? averageRating.toFixed(1) : 'Chưa có'} ({reviews.length} đánh giá)
+                  <span className="text-[#FFB800] mr-1">★</span> {averageRating > 0 ? averageRating.toFixed(1) : 'Chưa có'} ({sellerTotalReviews} đánh giá)
                 </div>
                 <div className="text-[11px] text-on-surface-variant">Tham gia từ {seller?.createdAt ? new Date(seller.createdAt).getFullYear() : '2022'} • {seller ? 'Nhiều' : '12'} tin đã đăng</div>
               </div>

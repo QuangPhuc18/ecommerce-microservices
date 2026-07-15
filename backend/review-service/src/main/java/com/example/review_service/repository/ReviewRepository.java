@@ -9,6 +9,11 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByReviewedUserIdOrderByCreatedAtDesc(Long reviewedUserId);
 
+    List<Review> findByProductIdOrderByCreatedAtDesc(Long productId);
+
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.reviewedUserId = :reviewedUserId")
     Double getAverageRatingByUserId(Long reviewedUserId);
+
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.productId = :productId")
+    Double getAverageRatingByProductId(Long productId);
 }
