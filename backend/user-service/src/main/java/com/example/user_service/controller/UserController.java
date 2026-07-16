@@ -54,4 +54,30 @@ public class UserController {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/me/deduct-balance")
+    public ResponseEntity<String> deductBalance(
+            @RequestParam("amount") double amount,
+            @RequestAttribute("userId") Long userId) {
+        User user = userService.getUserById(userId);
+        if (user.getBalance() < amount) {
+            return ResponseEntity.badRequest().body("Số dư không đủ");
+        }
+        user.setBalance(user.getBalance() - amount);
+        userService.updateUser(userId, user);
+        return ResponseEntity.ok("Thanh toán thành công");
+    }
+
+    @PutMapping("/internal/deduct-balance")
+    public ResponseEntity<String> internalDeductBalance(
+            @RequestParam("amount") double amount,
+            @RequestParam("userId") Long userId) {
+        User user = userService.getUserById(userId);
+        if (user.getBalance() < amount) {
+            return ResponseEntity.badRequest().body("Số dư không đủ");
+        }
+        user.setBalance(user.getBalance() - amount);
+        userService.updateUser(userId, user);
+        return ResponseEntity.ok("Thanh toán thành công");
+    }
 }

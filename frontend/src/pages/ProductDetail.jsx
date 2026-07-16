@@ -63,6 +63,13 @@ const ProductDetail = () => {
            }
         }
 
+        // Ghi nhận view (dành cho Gợi ý thông minh)
+        if (user?.isLoggedIn && user?.userId) {
+          try {
+            await api.post(`/products/${id}/view`);
+          } catch(e) {}
+        }
+
         // Fetch favorite status
         if (user?.isLoggedIn) {
           try {

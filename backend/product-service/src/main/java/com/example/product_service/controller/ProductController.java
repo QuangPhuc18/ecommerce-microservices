@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Collections;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,7 +39,11 @@ public class ProductController {
             @RequestParam(required = false) Long sellerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "bumpedAt"));
+        org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(
+            org.springframework.data.domain.Sort.Order.desc("isVip"),
+            org.springframework.data.domain.Sort.Order.desc("bumpedAt")
+        );
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
         return ResponseEntity.ok(productService.searchProducts(keyword, category, subCategory, location, condition, status, minPrice, maxPrice, sellerId, pageable));
     }
 
@@ -109,5 +114,104 @@ public class ProductController {
         product.setBumpedAt(java.time.LocalDateTime.now());
         productService.updateProduct(id, product);
         return ResponseEntity.ok().build();
+    }
+
+    // Tiêm bean thủ công trong controller do chưa tiêm vào service
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.web.client.RestTemplate restTemplate;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.product_service.repository.ProductViewHistoryRepository viewHistoryRepository;
+
+    @PutMapping("/{id}/upgrade-vip")
+    public ResponseEntity<?> upgradeVip(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        
+        Product product = productService.getProductById(id);
+        if (product == null) return ResponseEntity.notFound().build();
+        
+        if (!product.getSellerId().equals(Long.parseLong(userId))) {
+            return ResponseEntity.status(403).body("Chỉ chủ bài đăng mới được nâng cấp VIP");
+        }
+        
+        // Gọi sang user-service để trừ tiền (Giả sử 50 Xu)
+        double vipCost = 50.0;
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            // Cần truyền X-User-Id để UserService biết ai đang gọi (dành cho API Gateway / Jwt filter bypass)
+            // Trong thực tế cần có cơ chế auth giữa các service, ở đây gọi trực tiếp port hoặc qua gateway
+            // Vì RestTemplate gọi trực tiếp port 8085 (user-service) nên cần thêm userId vào RequestAttribute bên user-service hoặc query param
+            // Do controller user-service đọc userId từ RequestAttribute, ta có thể sửa UserController bên user-service để nhận qua Header X-User-Id
+            // Hoặc gọi thẳng qua api-gateway (localhost:8088/users/me/deduct-balance). Ta sẽ dùng HTTP PUT.
+            headers.set("X-User-Id", userId);
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
+            
+            // Ở đây đơn giản hóa, product-service báo cho user-service (hoặc tự thiết kế endpoint)
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "http://localhost:8085/users/internal/deduct-balance?amount=" + vipCost + "&userId=" + userId,
+                    org.springframework.http.HttpMethod.PUT,
+                    entity,
+                    String.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                product.setIsVip(true);
+                product.setVipUntil(java.time.LocalDateTime.now().plusDays(7));
+                product.setBumpedAt(java.time.LocalDateTime.now());
+                productService.updateProduct(id, product);
+                return ResponseEntity.ok("Nâng cấp VIP thành công");
+            } else {
+                return ResponseEntity.badRequest().body("Số dư không đủ");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi khi thanh toán: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> recordView(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        if (userId != null && !userId.isEmpty()) {
+            Product product = productService.getProductById(id);
+            if (product != null) {
+                com.example.product_service.entity.ProductViewHistory history = new com.example.product_service.entity.ProductViewHistory(
+                        Long.parseLong(userId),
+                        product.getId(),
+                        product.getCategory()
+                );
+                viewHistoryRepository.save(history);
+            }
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<Product>> getRecommendations(
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+        
+        List<Object[]> topCats = viewHistoryRepository.findTopCategoriesByUserId(
+                Long.parseLong(userId), 
+                org.springframework.data.domain.PageRequest.of(0, 3)
+        );
+        
+        if (topCats.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+        
+        List<String> categories = topCats.stream().map(obj -> (String) obj[0]).collect(Collectors.toList());
+        
+        // Tìm sản phẩm trong các danh mục này
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "bumpedAt"));
+        Page<Product> recs = productService.searchProducts(null, categories.get(0), null, null, null, null, null, null, null, pageable);
+        
+        return ResponseEntity.ok(recs.getContent());
     }
 }

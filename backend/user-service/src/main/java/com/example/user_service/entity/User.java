@@ -40,6 +40,15 @@ public class User {
     private String role = "USER";
 
     private LocalDateTime createdAt;
+    
+    @Column(nullable = false)
+    private Double balance = 0.0;
+
+    @Column(name = "vip_package")
+    private String vipPackage;
+
+    @Column(name = "vip_package_until")
+    private LocalDateTime vipPackageUntil;
 
     @PrePersist
     protected void onCreate() {

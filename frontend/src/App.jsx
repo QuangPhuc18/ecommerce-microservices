@@ -21,6 +21,7 @@ import AdminProducts from './pages/AdminProducts';
 import AdminBanners from './pages/AdminBanners';
 import AdminSettings from './pages/AdminSettings';
 import UserSettings from './pages/UserSettings';
+import PaymentReturn from './pages/PaymentReturn';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
                   <Route path="/product/:id" element={<ProductDetail />} />
                   <Route path="/seller/:id" element={<SellerProfile />} />
                   <Route path="/manage-posts" element={<ManagePosts />} />
+                  <Route path="/payment-return" element={<PaymentReturn />} />
                 </Routes>
               </main>
               <Footer />

@@ -218,10 +218,13 @@ const ManagePosts = () => {
               <span className="material-symbols-outlined text-[20px]">chat</span>
               <span className="text-sm font-semibold">Tin nhắn</span>
             </Link>
-            <Link to="#" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+            <button 
+              onClick={() => setActiveSidebarMenu('wallet')}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-transform text-left ${activeSidebarMenu === 'wallet' ? 'bg-[#feb700] text-[#6b4b00] font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'}`}
+            >
               <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-              <span className="text-sm font-semibold">Ví điện tử</span>
-            </Link>
+              <span className="text-sm">Ví điện tử</span>
+            </button>
           </nav>
 
           <div className="mt-4 px-4">
@@ -280,7 +283,7 @@ const ManagePosts = () => {
               displayedProducts.map(product => {
                 const stats = getMockStats(product.id);
                 return (
-                  <div key={product.id} className="flex p-4 border border-[#ffdbce] rounded-xl hover:shadow-md transition-shadow bg-white gap-4 group">
+                  <div key={product.id} className={`flex p-4 border ${product.vip ? 'border-[#feb700] bg-[#fffcf5]' : 'border-[#ffdbce] bg-white'} rounded-xl hover:shadow-md transition-shadow gap-4 group relative`}>
                     {/* Image */}
                     <div className="w-40 h-32 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 relative border border-gray-200">
                       {product.imageUrls?.[0] ? (
@@ -305,7 +308,10 @@ const ManagePosts = () => {
                     <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
                       <div>
                         <div className="flex justify-between items-start">
-                           <h3 className="font-bold text-[#1c1b1b] text-base truncate pr-4">{product.name}</h3>
+                           <h3 className="font-bold text-[#1c1b1b] text-base truncate pr-4 flex items-center gap-2">
+                             {product.name}
+                             {product.vip && <span className="bg-[#feb700] text-white text-[10px] px-1.5 py-0.5 rounded uppercase leading-none">VIP</span>}
+                           </h3>
                            <button className="text-gray-400 hover:text-gray-700">
                              <span className="material-symbols-outlined">more_vert</span>
                            </button>
@@ -339,6 +345,28 @@ const ManagePosts = () => {
                         >
                           <span className="material-symbols-outlined text-[14px]">rocket_launch</span> Đẩy tin
                         </button>
+                        {!product.vip && (
+                          <button 
+                            onClick={async () => {
+                              if (window.confirm(`Bạn có muốn dùng 50 Xu để nâng cấp bài đăng "${product.name}" thành tin VIP trong 7 ngày không?`)) {
+                                try {
+                                  await api.put(`/products/${product.id}/upgrade-vip`);
+                                  alert("Nâng cấp VIP thành công!");
+                                  const res = await api.get(`/products?sellerId=${user.userId}&size=100`);
+                                  setProducts(res.data.content || []);
+                                  // Refresh profile to update balance
+                                  const profileRes = await api.get(`/users/${user.userId}`);
+                                  setUserProfile(profileRes.data);
+                                } catch (e) {
+                                  alert(e.response?.data || "Nâng cấp VIP thất bại! Hãy kiểm tra số dư ví.");
+                                }
+                              }
+                            }}
+                            className="flex items-center gap-1 px-4 py-1.5 bg-[#feb700] hover:bg-[#e0a200] text-[#6b4b00] text-xs font-bold rounded-lg transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">workspace_premium</span> Lên VIP
+                          </button>
+                        )}
                       </div>
 
                       {activeTab === 'Đang hiển thị' && (
@@ -442,6 +470,66 @@ const ManagePosts = () => {
           <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
             <h1 className="text-2xl font-bold mb-6">Nâng cấp gói VIP</h1>
             <VipPackages />
+          </section>
+        ) : activeSidebarMenu === 'wallet' ? (
+          <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
+            <h1 className="text-2xl font-bold mb-6 text-[#1c1b1b]">Ví điện tử của tôi</h1>
+            <div className="bg-gradient-to-r from-[#feb700] to-[#f26522] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mb-8">
+               <div className="absolute top-0 right-0 p-4 opacity-20">
+                 <span className="material-symbols-outlined text-8xl">account_balance_wallet</span>
+               </div>
+               <div className="relative z-10">
+                 <p className="text-white/90 text-sm font-medium mb-1">Số dư hiện tại</p>
+                 <div className="flex items-baseline gap-2">
+                   <h2 className="text-4xl font-bold">{userProfile?.balance ? new Intl.NumberFormat('vi-VN').format(userProfile.balance) : '0'}</h2>
+                   <span className="text-xl font-medium">Xu</span>
+                 </div>
+                 <div className="mt-6 flex gap-3">
+                   <button 
+                     onClick={async () => {
+                       const amount = prompt("Nhập số tiền bạn muốn nạp (VND):", "50000");
+                       if (amount && !isNaN(amount) && Number(amount) >= 10000) {
+                         try {
+                           const res = await api.post(`/payment/create-url?amount=${amount}`);
+                           if (res.data && res.data.paymentUrl) {
+                             window.location.href = res.data.paymentUrl;
+                           }
+                         } catch (error) {
+                           alert("Có lỗi xảy ra khi tạo giao dịch Nạp tiền.");
+                         }
+                       } else if (amount) {
+                         alert("Vui lòng nhập số tiền hợp lệ (tối thiểu 10,000 VND).");
+                       }
+                     }}
+                     className="bg-white text-[#a63b00] px-6 py-2.5 rounded-full font-bold text-sm shadow-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+                   >
+                     <span className="material-symbols-outlined text-[18px]">add_circle</span> Nạp tiền
+                   </button>
+                   <button className="bg-black/20 text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-black/30 transition-colors">
+                     Lịch sử giao dịch
+                   </button>
+                 </div>
+               </div>
+            </div>
+            
+            <h2 className="text-lg font-bold mb-4 text-[#1c1b1b]">Hướng dẫn sử dụng Ví</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <span className="material-symbols-outlined text-[#f26522] mb-2 text-3xl">payments</span>
+                  <h3 className="font-bold text-gray-800 mb-1">Nạp tiền an toàn</h3>
+                  <p className="text-sm text-gray-600">Thanh toán qua cổng VNPay nhanh chóng và bảo mật 100%.</p>
+               </div>
+               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <span className="material-symbols-outlined text-[#00a841] mb-2 text-3xl">rocket_launch</span>
+                  <h3 className="font-bold text-gray-800 mb-1">Đẩy tin siêu tốc</h3>
+                  <p className="text-sm text-gray-600">Sử dụng Xu để đẩy tin đăng của bạn lên top, tiếp cận nhiều khách hàng hơn.</p>
+               </div>
+               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <span className="material-symbols-outlined text-[#feb700] mb-2 text-3xl">workspace_premium</span>
+                  <h3 className="font-bold text-gray-800 mb-1">Mua gói VIP</h3>
+                  <p className="text-sm text-gray-600">Nâng cấp tài khoản hoặc tin đăng lên gói VIP để bán hàng dễ dàng hơn.</p>
+               </div>
+            </div>
           </section>
         ) : (
           <section className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center min-h-[600px] text-gray-500">

@@ -1,7 +1,33 @@
 import React, { useState } from 'react';
+import api from '../services/api';
 
 const VipPackages = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleBuyPackage = async (packageType, price) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('jwt_token');
+      if (!token) {
+        alert('Vui lòng đăng nhập để nâng cấp VIP');
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await api.post(`/payment/create-url?amount=${price}&packageType=${packageType}`);
+      if (response.data && response.data.paymentUrl) {
+        window.location.href = response.data.paymentUrl;
+      } else {
+        alert('Không thể tạo liên kết thanh toán');
+      }
+    } catch (error) {
+      console.error('Error creating payment url', error);
+      alert('Có lỗi xảy ra khi tạo thanh toán VNPay');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[600px] animate-fade-in">
@@ -43,7 +69,11 @@ const VipPackages = () => {
             </li>
           </ul>
 
-          <button className="w-full py-3.5 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-colors">
+          <button 
+            onClick={() => handleBuyPackage('THUONG', 499000)}
+            disabled={isLoading}
+            className="w-full py-3.5 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+          >
             Đăng ký Gói Thường
           </button>
         </div>
@@ -88,7 +118,11 @@ const VipPackages = () => {
             </li>
           </ul>
 
-          <button className="w-full py-3.5 bg-gradient-to-r from-[#feb700] to-[#ff9800] text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md text-lg">
+          <button 
+            onClick={() => handleBuyPackage('PRO', 999000)}
+            disabled={isLoading}
+            className="w-full py-3.5 bg-gradient-to-r from-[#feb700] to-[#ff9800] text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md text-lg disabled:opacity-50"
+          >
             Đăng ký Gói Pro
           </button>
         </div>

@@ -41,6 +41,13 @@ public class Product {
     @Column(name = "bumped_at")
     private LocalDateTime bumpedAt; // Thời gian đẩy tin
 
+    @Column(name = "is_vip")
+    @com.fasterxml.jackson.annotation.JsonProperty("vip")
+    private Boolean isVip = false;
+
+    @Column(name = "vip_until")
+    private LocalDateTime vipUntil;
+
     @Column(name = "attributes", columnDefinition = "TEXT")
     private String attributes; // Lưu trữ JSON của các thuộc tính động
 

@@ -9,16 +9,18 @@ const Home = () => {
   const [favorites, setFavorites] = useState([]);
   const [categories, setCategories] = useState([]);
   const [banners, setBanners] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProductsAndFavorites = async () => {
       try {
-        const [prodRes, favRes, catRes, bannerRes] = await Promise.all([
+        const [prodRes, favRes, catRes, bannerRes, recRes] = await Promise.all([
           api.get('/products'),
           api.get('/favorites').catch(() => ({ data: [] })),
           api.get('/products/categories').catch(() => ({ data: [] })),
-          api.get('/products/banners/active').catch(() => ({ data: [] }))
+          api.get('/products/banners/active').catch(() => ({ data: [] })),
+          api.get('/products/recommendations').catch(() => ({ data: [] }))
         ]);
         
         if (prodRes.data && prodRes.data.content) {
@@ -37,6 +39,10 @@ const Home = () => {
 
         if (Array.isArray(bannerRes.data)) {
           setBanners(bannerRes.data);
+        }
+
+        if (Array.isArray(recRes.data)) {
+          setRecommendations(recRes.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -103,6 +109,48 @@ const Home = () => {
         </section>
       )}
 
+      {/* Gợi ý cho bạn */}
+      {!loading && recommendations.length > 0 && (
+        <section className="mb-xl">
+          <div className="flex justify-between items-center mb-md border-b-2 border-[#feb700] pb-2">
+            <h2 className="font-headline-lg text-[20px] md:text-headline-lg font-bold text-[#1c1b1b] flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#f26522] text-3xl">auto_awesome</span> Gợi ý cho bạn
+            </h2>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {recommendations.slice(0, 5).map((product) => (
+              <Link to={`/product/${product.id}`} key={product.id} className={`bg-surface rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group cursor-pointer border flex flex-col h-full ${product.vip ? 'border-[#feb700] bg-[#fffcf5]' : 'border-transparent hover:border-outline-variant'}`}>
+                <div className="relative w-full pt-[75%] overflow-hidden">
+                  <img className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                       alt={product.name} 
+                       src={product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'} />
+                  <button 
+                    className={`absolute top-2 right-2 p-1.5 backdrop-blur-sm rounded-full transition-colors ${favorites.includes(product.id) ? 'bg-[#ffebee] text-[#f44336]' : 'bg-surface/80 text-on-surface-variant hover:text-primary-container'}`} 
+                    onClick={(e) => handleToggleFavorite(e, product.id)}
+                  >
+                    <span className="material-symbols-outlined text-lg" style={{fontVariationSettings: favorites.includes(product.id) ? "'FILL' 1" : "'FILL' 0"}}>favorite</span>
+                  </button>
+                  {product.vip && (
+                    <div className="absolute top-0 left-0 bg-[#feb700] text-white text-[10px] font-bold px-2 py-1 rounded-br-lg uppercase tracking-wider">VIP</div>
+                  )}
+                </div>
+                <div className="p-3 flex flex-col flex-grow">
+                  <div className="font-price-card text-price-card text-primary-container mb-1">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price || 0)}
+                  </div>
+                  <h3 className="font-body-md text-body-md text-on-surface line-clamp-2 mb-2 flex-grow">{product.name}</h3>
+                  <div className="flex items-center text-on-surface-variant font-label-sm text-label-sm gap-1 mt-auto">
+                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                    <span className="truncate">{product.location || 'Toàn quốc'}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Categories */}
       <section className="mb-xl">
         <h2 className="font-headline-lg text-[20px] md:text-headline-lg font-bold mb-md text-on-surface">Khám phá danh mục</h2>
@@ -135,7 +183,7 @@ const Home = () => {
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {productsByCategory[categoryName].slice(0, 5).map((product) => (
-                <Link to={`/product/${product.id}`} key={product.id} className="bg-surface rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group cursor-pointer border border-transparent hover:border-outline-variant flex flex-col h-full">
+                <Link to={`/product/${product.id}`} key={product.id} className={`bg-surface rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group cursor-pointer border flex flex-col h-full ${product.vip ? 'border-[#feb700] bg-[#fffcf5]' : 'border-transparent hover:border-outline-variant'}`}>
                   <div className="relative w-full pt-[75%] overflow-hidden">
                     <img className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                          alt={product.name} 
@@ -146,6 +194,9 @@ const Home = () => {
                     >
                       <span className="material-symbols-outlined text-lg" style={{fontVariationSettings: favorites.includes(product.id) ? "'FILL' 1" : "'FILL' 0"}}>favorite</span>
                     </button>
+                    {product.vip && (
+                      <div className="absolute top-0 left-0 bg-[#feb700] text-white text-[10px] font-bold px-2 py-1 rounded-br-lg uppercase tracking-wider">VIP</div>
+                    )}
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
                     <div className="font-price-card text-price-card text-primary-container mb-1">
