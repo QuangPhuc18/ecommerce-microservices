@@ -9,18 +9,16 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Tạm thời vô hiệu hóa bảo vệ Admin Route theo yêu cầu
-  /*
   if (!user || user.role !== 'ADMIN') {
     return (
-      <div style={{ padding: '3rem', textAlign: 'center' }}>
-        <h2>Không có quyền truy cập</h2>
-        <p>Vui lòng đăng nhập bằng tài khoản Quản trị viên.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/')}>Về trang chủ</button>
+      <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: 'white', margin: '2rem auto', maxWidth: '500px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: '#e74c3c' }}>gpp_bad</span>
+        <h2 style={{ marginTop: '1rem', color: '#1c1b1b' }}>Không có quyền truy cập</h2>
+        <p style={{ color: '#666', marginBottom: '1.5rem' }}>Bạn không có quyền Quản trị viên để xem trang này.</p>
+        <button style={{ backgroundColor: '#feb700', color: '#6b4b00', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => navigate('/')}>Về trang chủ</button>
       </div>
     );
   }
-  */
 
   const menuItems = [
     { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Tổng quan' },

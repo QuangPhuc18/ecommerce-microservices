@@ -247,15 +247,23 @@ const Navbar = () => {
             
             {/* Profile or Login */}
             {user?.isLoggedIn ? (
-              <Link to="/manage-posts" className="flex items-center gap-2 p-1 hover:bg-surface-container-low rounded-full transition-colors" title="Quản lý cá nhân">
-                {userProfile?.avatarUrl ? (
-                  <img className="w-8 h-8 rounded-full border border-outline-variant object-cover" alt="Avatar" src={userProfile.avatarUrl} />
-                ) : (
-                  <div className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center bg-gray-100">
-                    <span className="material-symbols-outlined text-gray-400">person</span>
-                  </div>
+              <div className="flex items-center gap-3">
+                {(user.role === 'ADMIN' || user.role === 'ROLE_ADMIN') && (
+                  <Link to="/admin" className="flex items-center gap-1 text-sm font-bold text-[#e74c3c] hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors">
+                    <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                    Admin
+                  </Link>
                 )}
-              </Link>
+                <Link to="/manage-posts" className="flex items-center gap-2 p-1 hover:bg-surface-container-low rounded-full transition-colors" title="Quản lý cá nhân">
+                  {userProfile?.avatarUrl ? (
+                    <img className="w-8 h-8 rounded-full border border-outline-variant object-cover" alt="Avatar" src={userProfile.avatarUrl} />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center bg-gray-100">
+                      <span className="material-symbols-outlined text-gray-400">person</span>
+                    </div>
+                  )}
+                </Link>
+              </div>
             ) : (
               <Link to="/login" className="font-body-md font-semibold text-primary hover:underline px-2">Đăng nhập</Link>
             )}

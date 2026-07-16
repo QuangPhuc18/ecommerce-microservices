@@ -70,7 +70,24 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+            
+        Product product = productService.getProductById(id);
+        if (product == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        // Kiểm tra quyền: Chỉ ADMIN hoặc chính chủ mới được phép xóa tin đăng
+        boolean isAdmin = "ADMIN".equals(role) || "ROLE_ADMIN".equals(role);
+        boolean isOwner = userId != null && userId.equals(String.valueOf(product.getSellerId()));
+        
+        if (!isAdmin && !isOwner) {
+            return ResponseEntity.status(403).build();
+        }
+
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
