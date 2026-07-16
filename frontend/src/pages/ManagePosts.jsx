@@ -183,8 +183,18 @@ const ManagePosts = () => {
                )}
             </div>
             <div>
-              <h3 className="font-bold text-[#1c1b1b] text-base leading-tight truncate w-36">{userProfile?.name || user.email?.split('@')[0] || 'Tài khoản'}</h3>
+              <h3 className="font-bold text-[#1c1b1b] text-base leading-tight truncate w-36 flex items-center gap-1">
+                {userProfile?.name || user.email?.split('@')[0] || 'Tài khoản'}
+                {userProfile?.hasVipBadge && (
+                  <span className="material-symbols-outlined text-[#feb700] text-[16px]" title="Tài khoản VIP">workspace_premium</span>
+                )}
+              </h3>
               <p className="text-xs text-gray-500 mt-0.5">Thành viên từ {userProfile?.createdAt ? new Date(userProfile.createdAt).getFullYear() : '2023'}</p>
+              {userProfile?.hasVipBadge && (
+                <p className="text-xs text-[#a63b00] font-bold mt-1 bg-[#fff4e5] px-2 py-0.5 rounded-full inline-block">
+                  Lượt đẩy tin: {userProfile?.remainingPushToTop || 0}
+                </p>
+              )}
             </div>
           </div>
 
@@ -330,18 +340,23 @@ const ManagePosts = () => {
                       {/* Action Buttons */}
                       <div className="flex gap-2 mt-3">
                         <button 
+                          disabled={!userProfile || !userProfile.remainingPushToTop || userProfile.remainingPushToTop <= 0}
                           onClick={async () => {
                             try {
                               await api.put(`/products/${product.id}/bump`);
                               alert("Đẩy tin thành công! Tin của bạn đã lên top.");
+                              // Lấy lại số lượt
+                              const profileRes = await api.get(`/users/${user.userId}`);
+                              setUserProfile(profileRes.data);
                               // Reload data
                               const res = await api.get(`/products?sellerId=${user.userId}&size=100`);
                               setProducts(res.data.content || []);
                             } catch (e) {
-                              alert("Đẩy tin thất bại!");
+                              alert(e.response?.data || "Đẩy tin thất bại!");
                             }
                           }}
-                          className="flex items-center gap-1 px-4 py-1.5 bg-[#a63b00] hover:bg-[#852f00] text-white text-xs font-bold rounded-lg transition-colors"
+                          className={`flex items-center gap-1 px-4 py-1.5 text-white text-xs font-bold rounded-lg transition-colors ${(!userProfile || !userProfile.remainingPushToTop || userProfile.remainingPushToTop <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#a63b00] hover:bg-[#852f00]'}`}
+                          title={(!userProfile || !userProfile.remainingPushToTop || userProfile.remainingPushToTop <= 0) ? 'Bạn đã hết lượt đẩy tin' : ''}
                         >
                           <span className="material-symbols-outlined text-[14px]">rocket_launch</span> Đẩy tin
                         </button>

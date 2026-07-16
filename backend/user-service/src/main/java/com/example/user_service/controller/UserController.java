@@ -80,4 +80,15 @@ public class UserController {
         userService.updateUser(userId, user);
         return ResponseEntity.ok("Thanh toán thành công");
     }
+
+    @PutMapping("/internal/decrement-push")
+    public ResponseEntity<String> internalDecrementPush(@RequestParam("userId") Long userId) {
+        User user = userService.getUserById(userId);
+        if (user.getRemainingPushToTop() == null || user.getRemainingPushToTop() <= 0) {
+            return ResponseEntity.badRequest().body("Bạn đã hết lượt đẩy tin. Vui lòng mua thêm gói VIP.");
+        }
+        user.setRemainingPushToTop(user.getRemainingPushToTop() - 1);
+        userService.updateUser(userId, user);
+        return ResponseEntity.ok("Trừ lượt đẩy tin thành công. Còn lại: " + user.getRemainingPushToTop());
+    }
 }

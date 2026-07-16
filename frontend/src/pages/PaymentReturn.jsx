@@ -12,7 +12,7 @@ const PaymentReturn = () => {
         const processPayment = async () => {
             const params = Object.fromEntries([...searchParams]);
             try {
-                const response = await api.post('/users/payment/return', params);
+                const response = await api.post('/payment/return', params);
                 if (response.data.status === 'success') {
                     setStatus('success');
                     setMessage(response.data.message || 'Thanh toán thành công!');

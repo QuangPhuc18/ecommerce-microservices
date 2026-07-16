@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class ProductController {
     private final ProductService productService;
     private final CategoryRepository categoryRepository;
+    private final com.example.product_service.repository.ProductRepository productRepository;
 
     @GetMapping
     public ResponseEntity<Page<Product>> searchProducts(
@@ -111,9 +112,28 @@ public class ProductController {
         if (!product.getSellerId().equals(Long.parseLong(userId))) {
             return ResponseEntity.status(403).body("Bạn không có quyền đẩy tin này");
         }
-        product.setBumpedAt(java.time.LocalDateTime.now());
-        productService.updateProduct(id, product);
-        return ResponseEntity.ok().build();
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("X-User-Id", userId);
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "http://localhost:8085/users/internal/decrement-push?userId=" + userId,
+                    org.springframework.http.HttpMethod.PUT,
+                    entity,
+                    String.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                product.setBumpedAt(java.time.LocalDateTime.now());
+                productRepository.save(product);
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.badRequest().body("Bạn đã hết lượt đẩy tin hoặc chưa có gói VIP.");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Bạn đã hết lượt đẩy tin hoặc chưa có gói VIP.");
+        }
     }
 
     // Tiêm bean thủ công trong controller do chưa tiêm vào service

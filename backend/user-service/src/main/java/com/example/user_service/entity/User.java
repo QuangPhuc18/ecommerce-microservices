@@ -50,6 +50,15 @@ public class User {
     @Column(name = "vip_package_until")
     private LocalDateTime vipPackageUntil;
 
+    @Column(name = "remaining_new_posts")
+    private Integer remainingNewPosts = 0;
+
+    @Column(name = "remaining_push_to_top")
+    private Integer remainingPushToTop = 0;
+
+    @Column(name = "has_vip_badge")
+    private Boolean hasVipBadge = false;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

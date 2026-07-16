@@ -548,7 +548,12 @@ const ProductDetail = () => {
             <div className="flex items-center gap-3">
               <img src={seller?.avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuCnZsyyj2fTNm4ctjedSlRyM9DYm12HmD2MM79sfKzmHCRCDdvyzhIwFqH0T63V2TJEYXH566sRk147Zwp3f-XHa-JmIW0YlZA3k4lXUXe0MKvi4X1hpapzQUmyAdKOLSbYBHFNj9w85BBirHvmvA4COsIMAbtU7vccPTQ8oLa8qE0yJsnzQemYc58qv_1woW6mQpAQ61wAxV3KaGtb8wxwY6QzQ0cTVWUB_j-hbBbRZl7ohNSMl5GV"} alt="Avatar" className="w-12 h-12 rounded-full object-cover border border-outline-variant" />
               <div>
-                <div className="font-bold text-on-surface text-sm mb-0.5">{seller ? (seller.name || seller.email?.split('@')[0]) : "Người bán ẩn danh"}</div>
+                <div className="font-bold text-on-surface text-sm mb-0.5 flex items-center gap-1">
+                  {seller ? (seller.name || seller.email?.split('@')[0]) : "Người bán ẩn danh"}
+                  {seller?.hasVipBadge && (
+                      <span className="material-symbols-outlined text-[#feb700] text-[16px]" title="Shop VIP">workspace_premium</span>
+                  )}
+                </div>
                 <div className="flex items-center text-[11px] text-on-surface-variant mb-0.5">
                   <span className="text-[#FFB800] mr-1">★</span> {averageRating > 0 ? averageRating.toFixed(1) : 'Chưa có'} ({sellerTotalReviews} đánh giá)
                 </div>

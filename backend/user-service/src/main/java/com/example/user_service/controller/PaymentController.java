@@ -171,6 +171,18 @@ public class PaymentController {
                             User user = userRepository.findById(userId).orElseThrow();
                             user.setVipPackage(packageType);
                             user.setVipPackageUntil(java.time.LocalDateTime.now().plusDays(30));
+                            
+                            // Cấp ưu đãi tùy theo gói
+                            if (packageType.equalsIgnoreCase("Thuong")) {
+                                user.setRemainingNewPosts((user.getRemainingNewPosts() != null ? user.getRemainingNewPosts() : 0) + 50);
+                                user.setRemainingPushToTop((user.getRemainingPushToTop() != null ? user.getRemainingPushToTop() : 0) + 40);
+                                user.setHasVipBadge(false);
+                            } else if (packageType.equalsIgnoreCase("Pro")) {
+                                user.setRemainingNewPosts((user.getRemainingNewPosts() != null ? user.getRemainingNewPosts() : 0) + 70);
+                                user.setRemainingPushToTop((user.getRemainingPushToTop() != null ? user.getRemainingPushToTop() : 0) + 60);
+                                user.setHasVipBadge(true);
+                            }
+
                             userRepository.save(user);
                             
                             response.put("status", "success");
